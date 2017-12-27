@@ -20,30 +20,95 @@ use mysqli;
  */
 final class Database {
 
+  /**
+   * Constant defining a SELECT query
+   *
+   * @var integer
+   */
   const SELECT = 1;
 
+  /**
+   * Constant defining a SELECT COUNT query
+   *
+   * @var integer
+   */
   const SELECT_COUNT = 2;
 
+  /**
+   * Constant defining a CREATE TABLE query
+   *
+   * @var integer
+   */
   const CREATE_TABLE = 3;
 
+  /**
+   * Constant defining DROP query
+   *
+   * @var integer
+   */
   const DROP = 4;
 
+  /**
+   * Constant defining DELETE query
+   *
+   * @var integer
+   */
   const DELETE = 5;
 
+  /**
+   * Constant defining INSERT query
+   *
+   * @var integer
+   */
   const INSERT = 6;
 
+  /**
+   * Constant defining REPLACE query
+   *
+   * @var integer
+   */
   const REPLACE = 7;
 
+  /**
+   * Constant defining UPDATE query
+   *
+   * @var integer
+   */
   const UPDATE = 8;
 
+  /**
+   * Constant defining EXTENDED INSERT query
+   *
+   * @var integer
+   */
   const EXTENDED_INSERT = 9;
 
+  /**
+   * Constant defining EXTENDED REPLACE query
+   *
+   * @var integer
+   */
   const EXTENDED_REPLACE = 10;
 
+  /**
+   * Constant defining EXTENDED UPDATE query
+   *
+   * @var integer
+   */
   const EXTENDED_UPDATE = 11;
 
+  /**
+   * Constant defining ALTER TABLE query
+   *
+   * @var integer
+   */
   const ALTER_TABLE = 12;
 
+  /**
+   * Constant defining a TRUNCATE TABLE query
+   *
+   * @var integer
+   */
   const TRUNCATE = 13;
 
   /**
@@ -1147,7 +1212,7 @@ final class Database {
    *
    * @return boolean
    */
-  public function isJson($val) {
+  private function isJson($val) {
     json_decode($val);
     return (json_last_error() == JSON_ERROR_NONE);
   }
@@ -1160,7 +1225,7 @@ final class Database {
    *
    * @return string Escaped value
    */
-  public function _escape($val) {
+  private function _escape($val) {
     if(is_null($val) || (is_string($val) && $val == 'NULL')) {
       return 'NULL';
     }
@@ -1208,7 +1273,7 @@ final class Database {
    *
    * @return mixed
    */
-  public function fetch_all($resulttype = MYSQLI_ASSOC) {
+  private function fetch_all($resulttype = MYSQLI_ASSOC) {
     $res = [];
     if(method_exists('mysqli_result', 'fetch_all')) { // Compatibility layer with PHP < 5.3
       $res = $this->result->fetch_all($resulttype);
@@ -1231,7 +1296,7 @@ final class Database {
    *
    * @return string
    */
-  public function fields($fields = null) {
+  private function fields($fields = null) {
     $str_fields = null;
 
     if(is_array($fields) && count($fields)) {
@@ -1287,7 +1352,7 @@ final class Database {
    *
    * @return string
    */
-  public function where($where) {
+  private function where($where) {
     $ret = " WHERE";
     if(!is_array($where) || !count($where) || !isset($where[0])) {
       $this->log("Invalid where array clause", LogLevel::WARNING);
@@ -1330,7 +1395,7 @@ final class Database {
    *
    * @return string
    */
-  public function flags($flags) {
+  private function flags($flags) {
     $ret = '';
 
     if(isset($flags['group'])) {
@@ -1363,7 +1428,7 @@ final class Database {
    *
    * @return string
    */
-  public function groups($groups) {
+  private function groups($groups) {
     $ret = '';
     if(is_array($groups) && count($groups)) {
       $ret .= " GROUP BY";
@@ -1395,7 +1460,7 @@ final class Database {
    *
    * @see Database::where()
    */
-  public function having($having) {
+  private function having($having) {
     if(!is_array($having) || !count($having) || !isset($having[0]) || !is_array($having[0])) {
       $this->log("Invalid having parameter", LogLevel::WARNING, $having);
       return;
@@ -1420,7 +1485,7 @@ final class Database {
    *
    * @return string
    */
-  public function order($order) {
+  private function order($order) {
     $ret = '';
     if(is_array($order)) {
       $ret .= " ORDER BY";
@@ -1447,7 +1512,7 @@ final class Database {
    *
    * @return boolean
    */
-  public function is_constraint($con_id) {
+  private function is_constraint($con_id) {
     $res = $this->c->query("SELECT * FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_NAME = '$con_id'");
 
     if($res->num_rows) {
