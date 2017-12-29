@@ -1,7 +1,6 @@
 {
 	"require" : {
-		"katzgrau/klogger" : "dev-master",
-		"phpunit/phpunit" : "^6.5"
+		"katzgrau/klogger" : "~1.2"
 	},
 	"name" : "godsgood33/php-db",
 	"description" : "PHP Database Library",

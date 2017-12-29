@@ -44,7 +44,7 @@ class Logger extends AbstractLogger
         'flushFrequency' => false,
         'prefix'         => 'log_',
         'logFormat'      => false,
-        'appendContext'  => false,
+        'appendContext'  => true,
     );
 
     /**

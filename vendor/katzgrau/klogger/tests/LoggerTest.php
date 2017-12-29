@@ -3,7 +3,7 @@
 use Katzgrau\KLogger\Logger;
 use Psr\Log\LogLevel;
 
-class LoggerTest extends PHPUnit\Framework\TestCase
+class LoggerTest extends PHPUnit_Framework_TestCase
 {
     private $logPath;
 
@@ -62,7 +62,6 @@ class LoggerTest extends PHPUnit\Framework\TestCase
 
     private function getLastLine($filename)
     {
-        $size = filesize($filename);
         $fp = fopen($filename, 'r');
         $pos = -2; // start from second to last char
         $t = ' ';
@@ -71,10 +70,6 @@ class LoggerTest extends PHPUnit\Framework\TestCase
             fseek($fp, $pos, SEEK_END);
             $t = fgetc($fp);
             $pos = $pos - 1;
-            if ($size + $pos < -1) {
-                rewind($fp);
-                break;
-            }
         }
 
         $t = fgets($fp);
