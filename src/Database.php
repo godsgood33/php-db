@@ -18,7 +18,7 @@ use mysqli;
  *
  * @author Ryan Prather
  */
-final class Database {
+class Database {
 
   /**
    * Constant defining a SELECT query
@@ -1148,7 +1148,6 @@ final class Database {
    * @return array
    */
   public function field_check($field_data, $check, $pks, $index) {
-    $match = [];
     $default = null;
     $ret = null;
 
