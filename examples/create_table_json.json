@@ -1,5 +1,5 @@
 {
-	"tables" : [
+	"tables": [
 		{
 			"schema": "db",
 			"name": "settings",
@@ -105,28 +105,30 @@
 					"delete": null
 				}
 			],
-            "index" : [
-                {
-                   "id" : "default_idx",
-                   "type" : "index",
-                   "ref" : "default"
-                }
-            ]
+			"index": [
+				{
+					"id": "default_idx",
+					"type": "index",
+					"ref": "default"
+				}
+			]
 		},
 		{
-			"schema" : "db",
-			"name" : "test2",
-			"primary_key" : ["id"],
-			"fields" : [
+			"schema": "db",
+			"name": "test2",
+			"primary_key": [
+				"id"
+			],
+			"fields": [
 				{
-					"name" : "id",
-					"dataType" : "int(11)",
-					"type" : 3,
-					"length" : 11,
-					"values" : [],
-					"ai" : true,
-					"nn" : true,
-					"default" : ""
+					"name": "id",
+					"dataType": "int(11)",
+					"type": 3,
+					"length": 11,
+					"values": [],
+					"ai": true,
+					"nn": true,
+					"default": ""
 				}
 			]
 		}

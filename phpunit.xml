@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit
-	bootstrap="src/Database.php"
+	bootstrap="vendor\autoload.php"
 	colors="true"
 	verbose="true">
 	<testsuites>
 		<testsuite name="Tests">
-			<file>tests/DatabaseTest.php</file>
-			<exclude></exclude>
+			<directory suffix=".php">tests/</directory>
 		</testsuite>
 	</testsuites>
 	<filter>
 		<whitelist processUncoveredFilesFromWhitelist="false">
-			<file>src/Database.php</file>
-			<exclude></exclude>
+			<directory suffix=".php">src/</directory>
 		</whitelist>
 	</filter>
 </phpunit>

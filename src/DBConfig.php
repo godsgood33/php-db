@@ -4,35 +4,28 @@
  *
  * @var string
  */
-define('DB_SERVER', '{hostname|IP}');
+define('PHP_DB_SERVER', '{hostname|IP}');
 
 /**
  * Constant with database user to connect with
  *
  * @var string
  */
-define('DB_USER', '{username}');
+define('PHP_DB_USER', '{username}');
 
 /**
  * Constant with database password to connect with
  *
  * @var string
  */
-define('DB_PWD', '{password}');
+define('PHP_DB_PWD', '{password}');
 
 /**
  * Constant with database schema to connect to
  *
  * @var string
  */
-define('DB_SCHEMA', '{schema}');
-
-/**
- * Constant to decide if the database queries will run automatically after creating them
- *
- * @var boolean
- */
-define('AUTORUN', false);
+define('PHP_DB_SCHEMA', '{schema}');
 
 /**
  * Global to represent an IN statement (e.g.
