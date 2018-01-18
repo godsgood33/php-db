@@ -9,7 +9,6 @@ use Katzgrau\KLogger\Logger;
 use Psr\Log\LogLevel;
 use Exception;
 use mysqli;
-require_once 'DBConfig.php';
 
 /**
  * A generic database class
@@ -111,6 +110,62 @@ class Database
     const TRUNCATE = 13;
 
     /**
+     * Global to represent an IN statement (e.g.
+     * WHERE field IN (1,2))
+     *
+     * @var string
+     */
+    const IN = 'IN';
+
+    /**
+     * Global to represent a NOT IN statement (e.g.
+     * WHERE field NOT IN (1,2))
+     *
+     * @var string
+     */
+    const NOT_IN = 'NOT IN';
+
+    /**
+     * Global to represent a BETWEEN statement (e.g.
+     * WHERE field BETWEEN 1 and 2)
+     *
+     * @var string
+     */
+    const BETWEEN = 'BETWEEN';
+
+    /**
+     * Global to represent a LIKE statement (e.g.
+     * WHERE field LIKE '%value%')
+     *
+     * @var string
+     */
+    const LIKE = 'LIKE';
+
+    /**
+     * Global to represent a NOT LIKE statement (e.g.
+     * WHERE field NOT LIKE '%value%')
+     *
+     * @var string
+     */
+    const NOT_LIKE = 'NOT LIKE';
+
+    /**
+     * Global to represent an IS statement (e.g.
+     * WHERE field IS NULL)
+     *
+     * @var string
+     */
+    const IS = 'IS';
+
+    /**
+     * Global to represent an IS NOT statement (e.g.
+     * WHERE field IS NOT NULL)
+     *
+     * @var string
+     */
+    const IS_NOT = 'IS NOT';
+
+    /**
      * The mysqli connection
      *
      * @var \mysqli
@@ -129,7 +184,7 @@ class Database
      *
      * @var int
      */
-    public $query_type = null;
+    private $query_type = null;
 
     /**
      * The result of the query
@@ -141,7 +196,7 @@ class Database
     /**
      * Log level
      *
-     * @var LogLevel
+     * @var string
      */
     public $log_level = LogLevel::DEBUG;
 
@@ -150,7 +205,7 @@ class Database
      *
      * @var \Katzgrau\KLogger\Logger
      */
-    public $logger = null;
+    private $logger = null;
 
     /**
      * Variable to decide if we need to automatically run the queries after generating them
@@ -169,6 +224,7 @@ class Database
      */
     public function __construct(&$dbh = null)
     {
+        require_once 'DBConfig.php';
         if (! is_null($dbh) && is_a($dbh, "mysqli")) {
             $this->c = $dbh;
         } else {
@@ -179,7 +235,10 @@ class Database
             throw new Exception("Could not create database class due to error {$this->c->error}", E_ERROR);
         }
 
-        $this->logger = new Logger("./", $this->log_level, [
+        $this->logger = new Logger("./", /**
+         * @scrutinizer ignore-type
+         */
+        $this->log_level, [
             'filename' => 'db.log',
             'dateFormat' => 'Y-m-d H:i:s.u',
             'logFormat' => "[{date}] {level}{level-padding} {message} {context}"
@@ -275,6 +334,7 @@ class Database
 
         if (is_a($this->c, 'mysqli')) {
             if (! $this->c->ping()) {
+                require_once 'DBConfig.php';
                 $this->c = null;
                 $this->c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA);
             }
@@ -309,9 +369,7 @@ class Database
             } else {
                 $this->result = $this->check_results(MYSQLI_ASSOC);
             }
-        } catch (Exception $e) {
-            // die($e->getTraceAsString());
-        }
+        } catch (Exception $e) {}
 
         return $this->result;
     }
@@ -384,6 +442,7 @@ class Database
                 }
 
                 return 1;
+            // intentional fall through
             case self::EXTENDED_INSERT:
             case self::EXTENDED_REPLACE:
             case self::EXTENDED_UPDATE:
@@ -391,6 +450,7 @@ class Database
             case self::UPDATE:
             case self::DELETE:
             case self::ALTER_TABLE:
+                // intentional fall through
                 if ($this->c->error && $this->c->errno == 1060) {
                     return ($this->c->affected_rows ? $this->c->affected_rows : true);
                 } elseif ($this->c->error) {
@@ -416,7 +476,7 @@ class Database
      *            [optional]
      *            Optional query to pass in and execute
      *
-     * @return \mysqli_result
+     * @return \mysqli_result|boolean
      */
     public function query($sql = null)
     {
@@ -1152,10 +1212,10 @@ class Database
      *
      * @param object $field_data
      * @param object $check
-     * @param object $pks
+     * @param array $pks
      * @param object $index
      *
-     * @return array
+     * @return array|string
      */
     public function field_check($field_data, $check, $pks, $index)
     {
@@ -1203,7 +1263,7 @@ class Database
      * @param string $table_name
      *            Table to search for
      *
-     * @return boolean Returns number of tables that match if table is found in that schema, otherwise FALSE
+     * @return integer|boolean Returns number of tables that match if table is found in that schema, otherwise FALSE
      */
     public function table_exists(string $schema, string $table_name)
     {
@@ -1213,7 +1273,7 @@ class Database
         $sql = "SHOW TABLES LIKE '{$table_name}'";
 
         if ($res = $this->c->query($sql)) {
-            if (is_a($res, 'mysqli_result') && $res->num_rows) {
+            if (gettype($res) == 'object' && is_a($res, 'mysqli_result') && $res->num_rows) {
                 return $res->num_rows;
             }
         } else {
@@ -1535,7 +1595,7 @@ class Database
      * Function to call logger and log activity
      *
      * @param string $msg
-     * @param LogLevel $level
+     * @param string $level
      *            [optional]
      * @param array $context
      *            [optional]
@@ -1579,7 +1639,7 @@ class Database
         }
 
         switch ($op) {
-            case BETWEEN:
+            case self::BETWEEN:
                 if (! isset($clause['field']) || ! isset($clause['low']) || ! isset($clause['high'])) {
                     $this->log("Missing field, low, or high for BETWEEN where clause, skipping", LogLevel::WARNING, $clause);
                     return;
@@ -1606,7 +1666,7 @@ class Database
             $field = "`{$clause['field']}`";
         }
 
-        if ($op == IN || $op == NOT_IN) {
+        if ($op == self::IN || $op == self::NOT_IN) {
             if (is_string($clause['value'])) {
                 $ret .= " {$field} {$op} " . (strpos($clause['value'], '(') !== false ? $clause['value'] : "({$clause['value']})");
             } elseif (is_array($clause['value'])) {
@@ -1618,7 +1678,7 @@ class Database
                 $this->log("Invalid datatype for IN WHERE clause, only string and array allowed " . gettype($clause['value']), LogLevel::ERROR, $clause);
                 throw new Exception("Invalid datatype for IN WHERE clause", E_ERROR);
             }
-        } elseif ($op == BETWEEN) {
+        } elseif ($op == self::BETWEEN) {
             $ret .= " {$field} BETWEEN {$this->_escape($clause['low'])} AND {$this->_escape($clause['high'])}";
         } else {
             if (isset($clause['escape']) && ! $clause['escape']) {

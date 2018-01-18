@@ -4,7 +4,7 @@
  *
  * @var string
  */
-define('PHP_DB_SERVER', '{hostname|IP}');
+define('PHP_DB_SERVER', '{IP|hostname}');
 
 /**
  * Constant with database user to connect with
@@ -26,62 +26,6 @@ define('PHP_DB_PWD', '{password}');
  * @var string
  */
 define('PHP_DB_SCHEMA', '{schema}');
-
-/**
- * Global to represent an IN statement (e.g.
- * WHERE field IN (1,2))
- *
- * @var int
- */
-define('IN', 'IN');
-
-/**
- * Global to represent a NOT IN statement (e.g.
- * WHERE field NOT IN (1,2))
- *
- * @var int
- */
-define('NOT_IN', 'NOT IN');
-
-/**
- * Global to represent a BETWEEN statement (e.g.
- * WHERE field BETWEEN 1 and 2)
- *
- * @var int
- */
-define('BETWEEN', 'BETWEEN');
-
-/**
- * Global to represent a LIKE statement (e.g.
- * WHERE field LIKE '%value%')
- *
- * @var int
- */
-define('LIKE', 'LIKE');
-
-/**
- * Global to represent a NOT LIKE statement (e.g.
- * WHERE field NOT LIKE '%value%')
- *
- * @var int
- */
-define('NOT_LIKE', 'NOT LIKE');
-
-/**
- * Global to represent an IS statement (e.g.
- * WHERE field IS NULL)
- *
- * @var int
- */
-define('IS', 'IS');
-
-/**
- * Global to represent an IS NOT statement (e.g.
- * WHERE field IS NOT NULL)
- *
- * @var int
- */
-define('IS_NOT', 'IS NOT');
 
 /**
  * Global to represent a DEBUG error state
