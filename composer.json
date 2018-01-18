@@ -27,5 +27,11 @@
 		"library",
 		"mysql",
 		"mysqli"
-	]
+	],
+	"config" : {
+		"vendor-dir" : "vendor"
+	},
+	"require-dev" : {
+		"phpunit/phpunit" : "^6.5"
+	}
 }

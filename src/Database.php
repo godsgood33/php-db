@@ -115,7 +115,7 @@ class Database
      *
      * @var \mysqli
      */
-    private $c;
+    public $c;
 
     /**
      * To store the SQL statement
@@ -129,14 +129,14 @@ class Database
      *
      * @var int
      */
-    private $query_type = null;
+    public $query_type = null;
 
     /**
      * The result of the query
      *
      * @var mixed
      */
-    private $result = null;
+    public $result = null;
 
     /**
      * Log level
@@ -150,7 +150,7 @@ class Database
      *
      * @var \Katzgrau\KLogger\Logger
      */
-    private $logger = null;
+    public $logger = null;
 
     /**
      * Variable to decide if we need to automatically run the queries after generating them
@@ -204,7 +204,7 @@ class Database
      *
      * @param LogLevel $level
      */
-    public function set_log_level(LogLevel $level)
+    public function set_log_level($level)
     {
         $this->log_level = $level;
     }
@@ -322,7 +322,7 @@ class Database
      *
      * @return mixed
      */
-    private function check_results($return_type = MYSQLI_ASSOC, $class = null)
+    public function check_results($return_type = MYSQLI_ASSOC, $class = null)
     {
         $res = null;
 
@@ -1229,7 +1229,7 @@ class Database
      *
      * @return boolean
      */
-    private function isJson($val)
+    public function isJson($val)
     {
         json_decode($val);
         return (json_last_error() == JSON_ERROR_NONE);
@@ -1240,22 +1240,20 @@ class Database
      *
      * @param mixed $val
      *            Value to escape
+     * @param boolean $escape
+     *            Decide if we should escape or not
      *
      * @return string Escaped value
      */
-    private function _escape($val)
+    public function _escape($val, $escape = true)
     {
-        if (is_null($val) || (is_string($val) && $val == 'NULL')) {
+        if (is_null($val) || (is_string($val) && strtolower($val) == 'null')) {
             return 'NULL';
         } elseif (is_numeric($val) || is_string($val)) {
-            if ($this->isJson($val)) {
+            if ($escape) {
                 return "'{$this->c->real_escape_string($val)}'";
-            } elseif (strtolower($val) == 'now()') {
-                return $val;
-            } elseif (preg_match("/\.`\w+`/", $val)) {
-                return $val;
             }
-            return "'{$this->c->real_escape_string($val)}'";
+            return $val;
         } elseif (is_a($val, 'DateTime')) {
             return "'{$val->format(MYSQL_DATETIME)}'";
         } elseif (is_bool($val)) {
@@ -1284,7 +1282,7 @@ class Database
      *
      * @return mixed
      */
-    private function fetch_all($resulttype = MYSQLI_ASSOC)
+    public function fetch_all($resulttype = MYSQLI_ASSOC)
     {
         $res = [];
         if (method_exists('mysqli_result', 'fetch_all')) { // Compatibility layer with PHP < 5.3
@@ -1307,7 +1305,7 @@ class Database
      *
      * @return string
      */
-    private function fields($fields = null)
+    public function fields($fields = null)
     {
         $str_fields = null;
 
@@ -1357,7 +1355,7 @@ class Database
      *
      * @return string
      */
-    private function where($where)
+    public function where($where)
     {
         $ret = " WHERE";
         if (! is_array($where) || ! count($where) || ! isset($where[0])) {
@@ -1401,7 +1399,7 @@ class Database
      *
      * @return string
      */
-    private function flags($flags)
+    public function flags($flags)
     {
         $ret = '';
 
@@ -1435,7 +1433,7 @@ class Database
      *
      * @return string
      */
-    private function groups($groups)
+    public function groups($groups)
     {
         $ret = '';
         if (is_array($groups) && count($groups)) {
@@ -1466,7 +1464,7 @@ class Database
      *
      * @see Database::where()
      */
-    private function having($having)
+    public function having($having)
     {
         if (! is_array($having) || ! count($having) || ! isset($having[0]) || ! is_array($having[0])) {
             $this->log("Invalid having parameter", LogLevel::WARNING, $having);
@@ -1492,7 +1490,7 @@ class Database
      *
      * @return string
      */
-    private function order($order)
+    public function order($order)
     {
         $ret = '';
         if (is_array($order)) {
@@ -1519,7 +1517,7 @@ class Database
      *
      * @return boolean
      */
-    private function is_constraint($con_id)
+    public function is_constraint($con_id)
     {
         $res = $this->c->query("SELECT * FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_NAME = '$con_id'");
 
@@ -1560,7 +1558,7 @@ class Database
      * @param mixed $clause
      * @param int $index
      */
-    private function parse_clause($clause, $index)
+    public function parse_clause($clause, $index)
     {
         $ret = null;
 
