@@ -9,3 +9,12 @@ tools:
     php_pdepend: true
     php_analyzer: true
     php_cs_fixer: true
+    
+build:
+    tests:
+        override:
+            -
+                command: 'vendor/bin/phpunit --coverage-clover=project'
+                coverage:
+                    file: 'project'
+                    format: 'clover'

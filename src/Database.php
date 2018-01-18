@@ -258,6 +258,9 @@ class Database
      * @param mixed $return
      *            [optional]
      *            MYSQLI constant to control what is returned from the mysqli_result object
+     * @param string $class
+     *            [optional]
+     *            Class to use when returning object
      * @param string $sql
      *            [optional]
      *            Optional SQL query
@@ -715,7 +718,7 @@ class Database
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQL_BOTH);
+            return $this->execute(MYSQLI_BOTH);
         }
 
         return $this->sql;

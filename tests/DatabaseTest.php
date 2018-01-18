@@ -19,6 +19,7 @@ final class DatabaseTest extends TestCase
     public function setUp()
     {
         $this->db = new Database();
+        Database::$autorun = true;
     }
 
     public function testCanCreateDatabaseInstance()
@@ -652,8 +653,10 @@ final class DatabaseTest extends TestCase
 
     public function testCreateTable()
     {
+        Database::$autorun = false;
         $this->db->create_table('test', false, $this->db->select("test"));
         $this->assertEquals("CREATE TABLE IF NOT EXISTS test AS (SELECT * FROM test)", $this->db->sql);
+        Database::$autorun = true;
     }
 
     public function testCreateTableWithArrayParameter()
@@ -1157,20 +1160,26 @@ final class DatabaseTest extends TestCase
 
     public function testDropSettingsTable()
     {
+        Database::$autorun = false;
         $sql = $this->db->drop("settings");
         $this->assertEquals("DROP TABLE IF EXISTS `settings`", $sql);
+        Database::$autorun = true;
     }
 
     public function testDropTestTable()
     {
+        Database::$autorun = false;
         $sql = $this->db->drop("test");
         $this->assertEquals("DROP TABLE IF EXISTS `test`", $sql);
+        Database::$autorun = true;
     }
 
     public function testDropView()
     {
+        Database::$autorun = false;
         $sql = $this->db->drop("test", "view");
         $this->assertEquals("DROP VIEW IF EXISTS `test`", $sql);
+        Database::$autorun = true;
     }
 
     /**
