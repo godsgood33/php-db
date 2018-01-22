@@ -261,7 +261,7 @@ class Database
     /**
      * Function to set the log level just in case there needs to be a change to the default log level
      *
-     * @param LogLevel $level
+     * @param string $level
      */
     public function set_log_level($level)
     {
@@ -444,13 +444,18 @@ class Database
                 return 1;
             // intentional fall through
             case self::EXTENDED_INSERT:
+            // intentional fall through
             case self::EXTENDED_REPLACE:
+            // intentional fall through
             case self::EXTENDED_UPDATE:
+            // intentional fall through
             case self::REPLACE:
+            // intentional fall through
             case self::UPDATE:
+            // intentional fall through
             case self::DELETE:
+            // intentional fall through
             case self::ALTER_TABLE:
-                // intentional fall through
                 if ($this->c->error && $this->c->errno == 1060) {
                     return ($this->c->affected_rows ? $this->c->affected_rows : true);
                 } elseif ($this->c->error) {
@@ -523,7 +528,13 @@ class Database
         }
 
         if (! is_null($where) && is_array($where) && count($where)) {
-            $this->sql .= $this->where($where);
+            $where_str = " WHERE";
+            foreach ($where as $x => $w) {
+                $where_str .= $this->parse_clause($w, $x);
+            }
+            if (strlen($where_str) > strlen(" WHERE")) {
+                $this->sql .= $where_str;
+            }
         }
 
         if (count($flags)) {
@@ -570,7 +581,13 @@ class Database
         }
 
         if (! is_null($where) && is_array($where) && count($where)) {
-            $this->sql .= $this->where($where);
+            $where_str = " WHERE";
+            foreach ($where as $x => $w) {
+                $where_str .= $this->parse_clause($w, $x);
+            }
+            if (strlen($where_str) > strlen(" WHERE")) {
+                $this->sql .= $where_str;
+            }
         }
 
         if (count($flags)) {
@@ -726,7 +743,13 @@ class Database
         $this->sql = substr($this->sql, 0, - 1);
 
         if (! is_null($where) && is_array($where) && count($where)) {
-            $this->sql .= $this->where($where);
+            $where_str = " WHERE";
+            foreach ($where as $x => $w) {
+                $where_str .= $this->parse_clause($w, $x);
+            }
+            if (strlen($where_str) > strlen(" WHERE")) {
+                $this->sql .= $where_str;
+            }
         }
 
         if (! is_null($flags) && is_array($flags) && count($flags)) {
@@ -901,7 +924,13 @@ class Database
         }
 
         if (! is_null($where) && is_array($where) && count($where)) {
-            $this->sql .= $this->where($where);
+            $where_str = " WHERE";
+            foreach ($where as $x => $w) {
+                $where_str .= $this->parse_clause($w, $x);
+            }
+            if (strlen($where_str) > strlen(" WHERE")) {
+                $this->sql .= $where_str;
+            }
         }
 
         if (self::$autorun) {
@@ -1273,7 +1302,10 @@ class Database
         $sql = "SHOW TABLES LIKE '{$table_name}'";
 
         if ($res = $this->c->query($sql)) {
-            if (gettype($res) == 'object' && is_a($res, 'mysqli_result') && $res->num_rows) {
+            if (gettype($res) == 'object' && is_a(/**
+             * @scrutinizer ignore-type
+             */
+            $res, 'mysqli_result') && $res->num_rows) {
                 return $res->num_rows;
             }
         } else {
@@ -1391,53 +1423,6 @@ class Database
     }
 
     /**
-     * Function to create the where statement for the SQL
-     *
-     * @param array $where
-     *            Two-dimensional array to use to build the where clause
-     *
-     *            <code>
-     *            [<br />
-     *            &nbsp;&nbsp;[<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;'field' => 'field_name',<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;'op' => '=', // (defaults to '=', common operations or IN, NOT_IN, BETWEEN, LIKE, NOT_LIKE, IS, & IS_NOT constants)<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;'value' => 'field_value',<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;'sql_op' => 'AND', // NOT required for first element (common SQL operators AND, OR, NOR)<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;'open-paren' => true, // optional to add a paren '(' BEFORE clause<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;'close-paren' => true, // optional to add a paren ')' AFTER clause<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;'low' => '1', // LOW value only used in BETWEEN clause<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;'high' => '100', // HIGH value only used in BETWEEN clause<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;'case_insensitive' => true // optional boolean to set the parameters to LOWER to do case insenstive comparison
-     *            &nbsp;&nbsp;],<br />
-     *            &nbsp;&nbsp;[<br />
-     *            &nbsp;&nbsp;&nbsp;&nbsp;...<br />
-     *            &nbsp;&nbsp;],<br />
-     *            &nbsp;&nbsp;...<br />
-     *            ]
-     *            </code>
-     *
-     * @return string
-     */
-    public function where($where)
-    {
-        $ret = " WHERE";
-        if (! is_array($where) || ! count($where) || ! isset($where[0])) {
-            $this->log("Invalid where array clause", LogLevel::WARNING);
-            return;
-        }
-
-        foreach ($where as $x => $w) {
-            $ret .= $this->parse_clause($w, $x);
-        }
-
-        if ($ret == " WHERE") {
-            $ret = '';
-        }
-
-        return $ret;
-    }
-
-    /**
      * Function to parse the flags
      *
      * @param array $flags
@@ -1471,7 +1456,13 @@ class Database
         }
 
         if (isset($flags['having']) && is_array($flags['having'])) {
-            $ret .= $this->having($flags['having']);
+            $having = " HAVING";
+            foreach ($flags['having'] as $x => $h) {
+                $having .= $this->parse_clause($h, $x);
+            }
+            if (strlen($having) > strlen(" HAVING")) {
+                $ret .= $having;
+            }
         }
 
         if (isset($flags['order'])) {
@@ -1513,34 +1504,6 @@ class Database
             $ret .= " GROUP BY {$groups}";
         } else {
             throw (new Exception("Error in datatype for groups " . gettype($groups), E_ERROR));
-        }
-
-        return $ret;
-    }
-
-    /**
-     * Function to parse SQL HAVING statements (same format as WHERE)
-     *
-     * @param mixed $having
-     *
-     * @return string
-     *
-     * @see Database::where()
-     */
-    public function having($having)
-    {
-        if (! is_array($having) || ! count($having) || ! isset($having[0]) || ! is_array($having[0])) {
-            $this->log("Invalid having parameter", LogLevel::WARNING, $having);
-            return;
-        }
-
-        $ret = " HAVING";
-        foreach ($having as $x => $h) {
-            $ret .= $this->parse_clause($h, $x);
-        }
-
-        if ($ret == " HAVING") {
-            $ret = '';
         }
 
         return $ret;
@@ -1618,7 +1581,7 @@ class Database
     /**
      * Function to parse where and having clauses
      *
-     * @param mixed $clause
+     * @param array $clause
      * @param int $index
      */
     public function parse_clause($clause, $index)
