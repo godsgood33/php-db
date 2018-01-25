@@ -287,7 +287,7 @@ class Database
      *
      * @param string $schema
      */
-    public function set_schema(string $schema)
+    public function set_schema($schema)
     {
         if (! $this->c->select_db($schema)) {
             throw new Exception("Failed to change databases to {$schema}", E_ERROR);
@@ -302,7 +302,7 @@ class Database
      * @param string $val
      * @return boolean
      */
-    public function set_var(string $name, string $val)
+    public function set_var($name, $val)
     {
         if (! $name || ! $val) {
             return false;
@@ -1294,7 +1294,7 @@ class Database
      *
      * @return integer|boolean Returns number of tables that match if table is found in that schema, otherwise FALSE
      */
-    public function table_exists(string $schema, string $table_name)
+    public function table_exists($schema, $table_name)
     {
         if (! $this->c->select_db($schema)) {
             fwrite(STDOUT, $this->c->error . PHP_EOL);
