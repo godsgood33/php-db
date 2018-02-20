@@ -1,6 +1,6 @@
 {
 	"require" : {
-		"katzgrau/klogger" : "~1.2"
+		"monolog/monolog" : "~1.23"
 	},
 	"name" : "godsgood33/php-db",
 	"description" : "PHP Database Library",
