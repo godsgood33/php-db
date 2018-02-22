@@ -18,8 +18,8 @@ final class DatabaseTest extends TestCase
 
     public function setUp()
     {
-        $this->db = new Database();
-        Database::$autorun = true;
+        $this->db = new Database(realpath(__DIR__));
+        // Database::$autorun = true;
     }
 
     public function testCanCreateDatabaseInstance()
@@ -33,12 +33,10 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("db", $schema);
     }
 
-    /**
-     * @expectedException Exception
-     */
     public function testSetSchemaWithNonExistentSchema()
     {
-        $this->db->setSchema("george");
+        $ret = $this->db->setSchema("george");
+        $this->assertFalse($ret);
     }
 
     public function testDatabaseConnection()
@@ -53,7 +51,7 @@ final class DatabaseTest extends TestCase
             fwrite(STDOUT, $conn->connect_error);
         }
 
-        $this->db = new Database($conn);
+        $this->db = new Database(realpath(__DIR__), $conn);
 
         $this->assertInstanceOf("Godsgood33\Php_Db\Database", $this->db);
     }
@@ -65,9 +63,9 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
-    public function testSelectWithNullTableName()
+    public function testSelectWithInvalidTableName()
     {
         $this->db->select(new stdClass());
     }
@@ -112,6 +110,9 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("SELECT id FROM test", $this->db->getSql());
     }
 
+    /**
+     * @expectedException InvalidArgumentException
+     */
     public function testSelectWithStdClassParameter()
     {
         // query table with object parameter
@@ -119,6 +120,9 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("SELECT  FROM test", $this->db->getSql());
     }
 
+    /**
+     * @expectedException TypeError
+     */
     public function testSelectWithNullWhereParameter()
     {
         // query table with null where parameter
@@ -236,10 +240,10 @@ final class DatabaseTest extends TestCase
 
     public function testCreateTable()
     {
-        Database::$autorun = false;
+        // Database::$autorun = false;
         $this->db->createTable('test', false, $this->db->select("test"));
         $this->assertEquals("CREATE TABLE IF NOT EXISTS test AS (SELECT * FROM test)", $this->db->getSql());
-        Database::$autorun = true;
+        // Database::$autorun = true;
     }
 
     public function testCreateTableWithArrayParameter()
@@ -314,7 +318,7 @@ final class DatabaseTest extends TestCase
         $new->nn = false;
         $new->default = null;
 
-        $this->db->alterTable('test', 'add-column', $new);
+        $this->db->alterTable('test', Database::ADD_COLUMN, $new);
         $this->assertEquals("ALTER TABLE test ADD COLUMN `newCol` tinyint(1) DEFAULT NULL", $this->db->getSql());
     }
 
@@ -327,7 +331,7 @@ final class DatabaseTest extends TestCase
         $mod->nn = true;
         $mod->default = 1;
 
-        $this->db->alterTable("test", 'modify-column', $mod);
+        $this->db->alterTable("test", Database::MODIFY_COLUMN, $mod);
         $this->assertEquals("ALTER TABLE test MODIFY COLUMN `default` `default2` int(1) NOT NULL DEFAULT '1'", $this->db->getSql());
     }
 
@@ -336,7 +340,7 @@ final class DatabaseTest extends TestCase
         $drop = new stdClass();
         $drop->name = 'newCol';
 
-        $this->db->alterTable("test", 'drop-column', [
+        $this->db->alterTable("test", Database::DROP_COLUMN, [
             $drop
         ]);
         $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol`", $this->db->getSql());
@@ -348,10 +352,12 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test", $this->db->getSql());
     }
 
+    /**
+     * @expectedException TypeError
+     */
     public function testSelectCountWithStdClassParameterForTable()
     {
         $this->db->selectCount(new stdClass());
-        $this->assertEquals(null, $this->db->getSql());
     }
 
     public function testSelectCountWithArrayWhereParameter()
@@ -396,7 +402,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
     public function testInsertInvalidTableNameDataType()
     {
@@ -404,7 +410,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException Error
      */
     public function testInsertInvalidParameterDataType()
     {
@@ -431,7 +437,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
     public function testEInsertInvalidTableNameDatatype()
     {
@@ -439,7 +445,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException Error
      */
     public function testEInsertDifferentFieldValuePairs()
     {
@@ -457,7 +463,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException Error
      */
     public function testEInsertDifferentFieldValuePairs2()
     {
@@ -519,7 +525,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
     public function testUpdateInvalidTableNameDatatype()
     {
@@ -557,7 +563,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
     public function testReplaceInvalidTableNameDatatype()
     {
@@ -583,7 +589,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
     public function testEReplaceInvalidTableNameDatatype()
     {
@@ -605,19 +611,19 @@ final class DatabaseTest extends TestCase
     public function testFieldData()
     {
         $id = new stdClass();
-        $id->{'name'} = 'id';
-        $id->{'orgname'} = 'id';
-        $id->{'table'} = 'test2';
-        $id->{'orgtable'} = 'test2';
-        $id->{'def'} = null;
-        $id->{'db'} = 'db';
-        $id->{'catalog'} = 'def';
-        $id->{'max_length'} = 0;
-        $id->{'length'} = 11;
-        $id->{'charsetnr'} = 63;
-        $id->{'flags'} = 49667;
-        $id->{'type'} = 3;
-        $id->{'decimals'} = 0;
+        $id->name = 'id';
+        $id->orgname = 'id';
+        $id->table = 'test2';
+        $id->orgtable = 'test2';
+        $id->def = null;
+        $id->db = 'db';
+        $id->catalog = 'def';
+        $id->max_length = 0;
+        $id->length = 11;
+        $id->charsetnr = 63;
+        $id->flags = 49667;
+        $id->type = 3;
+        $id->decimals = 0;
 
         // query all fields in table
         $fd = $this->db->fieldData("test2");
@@ -678,15 +684,14 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("test\'s", $ret);
     }
 
-    /**
-     * @expectedException Exception
-     */
     public function testEscapeUnknownClassToEscape()
     {
         // $this->markTestIncomplete();
         $tc2 = new TestClass2();
         $tc2->var = "test";
         $ret = $this->db->_escape($tc2);
+
+        $this->assertEquals("", $ret);
     }
 
     public function testDeleteBasic()
@@ -711,14 +716,14 @@ final class DatabaseTest extends TestCase
 
     public function testDeleteWithJoin()
     {
-        $this->db->delete('test t', null, [], [
+        $this->db->delete('test t', [], [], [
             'joins' => "JOIN settings s ON s.id=t.id"
         ]);
         $this->assertEquals("DELETE FROM test t JOIN settings s ON s.id=t.id", $this->db->getSql());
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
     public function testDeleteInvalidTableNameDatatype()
     {
@@ -732,7 +737,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
     public function testTruncateInvalidTableNameDatatype()
     {
@@ -741,30 +746,30 @@ final class DatabaseTest extends TestCase
 
     public function testDropSettingsTable()
     {
-        Database::$autorun = false;
+        // Database::$autorun = false;
         $sql = $this->db->drop("settings");
         $this->assertEquals("DROP TABLE IF EXISTS `settings`", $sql);
-        Database::$autorun = true;
+        // Database::$autorun = true;
     }
 
     public function testDropTestTable()
     {
-        Database::$autorun = false;
+        // Database::$autorun = false;
         $sql = $this->db->drop("test");
         $this->assertEquals("DROP TABLE IF EXISTS `test`", $sql);
-        Database::$autorun = true;
+        // Database::$autorun = true;
     }
 
     public function testDropView()
     {
-        Database::$autorun = false;
+        // Database::$autorun = false;
         $sql = $this->db->drop("test", "view");
         $this->assertEquals("DROP VIEW IF EXISTS `test`", $sql);
-        Database::$autorun = true;
+        // Database::$autorun = true;
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
     public function testDropInvalidTableNameDatatype()
     {
@@ -772,7 +777,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException TypeError
      */
     public function testDropInvalidTypeDatatype()
     {
