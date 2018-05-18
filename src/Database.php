@@ -203,9 +203,9 @@ class Database
     private $_sql = null;
 
     /**
-     * A string to store the type of query that is being run
+     * A variable to store the type of query that is being run
      *
-     * @var string
+     * @var int
      */
     private $_queryType = null;
 
@@ -340,11 +340,32 @@ class Database
         $handles = [];
 
         foreach ($this->_logger->getHandlers() as $h) {
-            $h->setLevel($strLevel);
+            $h->/** @scrutinizer ignore-call */
+                setLevel($strLevel);
             $handles[] = $h;
         }
 
         $this->_logger->setHandlers($handles);
+    }
+
+    /**
+     * Getter function for _queryType
+     *
+     * @return int
+     */
+    public function getQueryType()
+    {
+        return $this->_queryType;
+    }
+
+    /**
+     * Setter function for _queryType
+     *
+     * @param int $qt
+     */
+    public function setQueryType(int $qt)
+    {
+        $this->_queryType = $qt;
     }
 
     /**
@@ -470,7 +491,7 @@ class Database
                 }
             }
 
-            if ($return == MYSQLI_OBJECT && ! is_null($class) && class_exists($class)) {
+            if ($return == MYSQLI_OBJECT && ! is_null($class) && class_exists(/** @scrutinizer ignore-type */$class)) {
                 $this->_logger->debug("Checking results for query", [
                     'class' => get_class($class)
                 ]);
@@ -505,7 +526,8 @@ class Database
         switch ($this->_queryType) {
             case self::SELECT_COUNT:
                 if (! is_a($this->_result, 'mysqli_result')) {
-                    die($this->_logger->error("Error with return on query"));
+                    $this->_logger->error("Error with return on query");
+                    return;
                 }
 
                 if ($this->_result->num_rows == 1) {
@@ -528,7 +550,8 @@ class Database
                 return $res;
             case self::SELECT:
                 if (! is_a($this->_result, 'mysqli_result')) {
-                    die($this->_logger->error("Error with return on query"));
+                    $this->_logger->error("Error with return on query");
+                    return;
                 }
 
                 if ($returnType == MYSQLI_OBJECT && ! is_null($class) && class_exists($class)) {
@@ -604,8 +627,11 @@ class Database
                 } else {
                     return true;
                 }
+                break;
             case self::CREATE_TABLE:
+            // intentional fall through
             case self::DROP:
+            // intentional fall through
             case self::TRUNCATE:
                 $this->_logger->debug("Returning from {$this->_queryType}");
                 return true;
@@ -658,7 +684,7 @@ class Database
         $this->_sql = null;
         $this->_queryType = self::SELECT;
 
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if (! is_null($strTableName)) {
             $this->_logger->debug("Starting SELECT query of {$strTableName}", [
                 'fields' => $this->fields($fields)
             ]);
@@ -722,7 +748,7 @@ class Database
         $this->_sql = null;
         $this->_queryType = self::SELECT_COUNT;
 
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if (! is_null($strTableName)) {
             $this->_sql = "SELECT COUNT(1) AS 'count' FROM $strTableName";
         } else {
             $this->_logger->emergency("Table name is invalid or wrong type");
@@ -768,7 +794,7 @@ class Database
         $this->_sql = null;
         $this->_queryType = self::INSERT;
 
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if (! is_null($strTableName)) {
             $this->_sql = "INSERT" . ($blnToIgnore ? " IGNORE" : "") . " INTO $strTableName" . (is_array($params) && count($params) ? " (`" . implode("`,`", array_keys($params)) . "`)" : null);
         } else {
             throw new Error("Table name is invalid");
@@ -828,15 +854,14 @@ class Database
                         ]);
                         throw new Error("Inconsistent number of fields in fields and values in extended_insert " . print_r($p, true));
                     }
-                    $this->_sql .= "(" . implode(",", array_map([
-                        $this,
-                        '_escape'
-                    ], array_values($p))) . ")";
+                    $this->sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($p))) . "),";
 
                     if ($p != end($params)) {
                         $this->_sql .= ",";
                     }
                 }
+            } else {
+                $this->sql .= "(" . implode("),(", array_map([$this, '_escape'], array_values($params))) . ")";
             }
         }
 
@@ -1451,7 +1476,7 @@ class Database
         if (! is_null($index) && count($index)) {
             foreach ($index as $ind) {
                 if ($check->name == $ind->ref && ! ($field_data->flags & MYSQLI_MULTIPLE_KEY_FLAG)) {
-                    $this->_logger->name("Missing index", [
+                    $this->_logger->debug("Missing index", [
                         'name' => $field_data->name
                     ]);
                     $ret .= ($ret ? "," : "") . " ADD INDEX `{$ind->id}` (`{$ind->ref}` ASC)";
