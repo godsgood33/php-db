@@ -1,6 +1,5 @@
 {
 	"require" : {
-		"php" : "^7.2",
 		"monolog/monolog" : "~1.23"
 	},
 	"name" : "godsgood33/php-db",
@@ -33,6 +32,6 @@
 		"vendor-dir" : "vendor"
 	},
 	"require-dev" : {
-		"phpunit/phpunit" : "^6.5"
+		"phpunit/phpunit" : "~7.2"
 	}
 }
