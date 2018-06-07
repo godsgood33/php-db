@@ -28,13 +28,6 @@ define('PHP_DB_PWD', '{password}');
 define('PHP_DB_SCHEMA', '{schema}');
 
 /**
- * Global to represent a DEBUG error state
- *
- * @var int
- */
-define('E_DEBUG', 65535);
-
-/**
  * Constant to define that we want to return an object
  *
  * @var int
