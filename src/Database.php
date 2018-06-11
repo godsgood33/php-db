@@ -889,14 +889,14 @@ class Database
                         ]);
                         throw new Error("Inconsistent number of fields in fields and values in extended_insert " . print_r($p, true));
                     }
-                    $this->sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($p))) . ")";
+                    $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($p))) . ")";
 
                     if ($p != end($params)) {
                         $this->_sql .= ",";
                     }
                 }
             } else {
-                $this->sql .= "(" . implode("),(", array_map([$this, '_escape'], array_values($params))) . ")";
+                $this->_sql .= "(" . implode("),(", array_map([$this, '_escape'], array_values($params))) . ")";
             }
         }
 
