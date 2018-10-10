@@ -4,9 +4,8 @@ use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 
 require_once 'TestClass.php'; // class with _escape method
-require_once 'TestClass2.php';
-
-// class without _escape method
+require_once 'TestClass2.php'; // class without _escape method
+require_once 'DBConfig.php';
 
 /**
  * @coversDefaultClass Database
@@ -63,7 +62,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testSelectWithInvalidTableName()
     {
@@ -111,7 +110,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException InvalidArgumentException
+     * @expectedException Exception
      */
     public function testSelectWithStdClassParameter()
     {
@@ -120,9 +119,6 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("SELECT  FROM test", $this->db->getSql());
     }
 
-    /**
-     * @expectedException TypeError
-     */
     public function testSelectWithNullWhereParameter()
     {
         // query table with null where parameter
@@ -146,89 +142,6 @@ final class DatabaseTest extends TestCase
             ]
         ]);
         $this->assertEquals("SELECT id FROM test", $this->db->getSql());
-    }
-
-    public function testGroupWithString()
-    {
-        // $this->markTestIncomplete();
-
-        // query with single group by string
-        $sql = $this->db->groups('name');
-        $this->assertEquals(" GROUP BY name", $sql);
-    }
-
-    public function testGroupWithArray()
-    {
-        // query with array group by string
-        $sql = $this->db->groups([
-            'name',
-            'id'
-        ]);
-        $this->assertEquals(" GROUP BY name, id", $sql);
-    }
-
-    /**
-     * @expectedException Exception
-     */
-    public function testGroupWrongUnknownDataType()
-    {
-        // $this->markTestIncomplete();
-
-        // query group with invalid datatype (stdClass) should throw Exception
-        $this->db->groups(new stdClass());
-    }
-
-    public function testOrderWithString()
-    {
-        // $this->markTestIncomplete();
-
-        // query with single name order parameter
-        $sql = $this->db->order("name");
-        $this->assertEquals(" ORDER BY name", $sql);
-    }
-
-    public function testOrderWithArray()
-    {
-        // query with order array
-        $sql = $this->db->order([
-            [
-                'field' => 'id',
-                'sort' => 'ASC'
-            ],
-            [
-                'field' => 'name',
-                'sort' => 'DESC'
-            ]
-        ]);
-        $this->assertEquals(" ORDER BY id ASC, name DESC", $sql);
-    }
-
-    public function testOrderWithObject()
-    {
-        // query with invalid datatype (stdClass) will return empty string
-        $sql = $this->db->order(new stdClass());
-        $this->assertEquals("", $sql);
-    }
-
-    public function testFlags()
-    {
-        // $this->markTestIncomplete();
-
-        // query flags with all parameters
-        $sql = $this->db->flags([
-            'group' => 'name',
-            'order' => 'name',
-            'having' => [
-                [
-                    'field' => 'id',
-                    'op' => '=',
-                    'value' => 1
-                ]
-            ],
-            'limit' => '10',
-            'start' => '5'
-        ]);
-        $this->assertEquals(" GROUP BY name HAVING `id` = '1' ORDER BY name LIMIT 5,10", $sql);
     }
 
     public function testCreateTemporaryTable()
@@ -353,7 +266,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testSelectCountWithStdClassParameterForTable()
     {
@@ -401,8 +314,48 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("INSERT INTO test SELECT id FROM settings", $this->db->getSql());
     }
 
+    public function testSelectRetrieveObject()
+    {
+        $this->db->select("settings");
+        $row = $this->db->execute();
+
+        $this->assertTrue(is_array($row));
+        $this->assertTrue(is_object($row[0]));
+    }
+
+    public function testSelectRetrieveNumericArray()
+    {
+        $this->db->select("settings");
+        $row = $this->db->execute(MYSQLI_NUM);
+
+        $this->assertTrue(is_array($row));
+        $this->assertTrue(isset($row[0][0]));
+    }
+
+    public function testSelectRetrieveAssciativeArray()
+    {
+        $this->db->select("settings");
+        $row = $this->db->execute(MYSQLI_ASSOC);
+
+        $this->assertTrue(is_array($row));
+        $this->assertTrue(isset($row[0]['id']));
+    }
+
+    public function testSelectRetrieveSingleRowObject()
+    {
+        $this->db->select('settings', null, [
+            [
+                'field' => 'id',
+                'value' => 1
+            ]
+        ]);
+        $row = $this->db->execute();
+
+        $this->assertTrue(is_object($row));
+    }
+
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testInsertInvalidTableNameDataType()
     {
@@ -410,7 +363,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Error
+     * @expectedException Exception
      */
     public function testInsertInvalidParameterDataType()
     {
@@ -437,7 +390,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testEInsertInvalidTableNameDatatype()
     {
@@ -445,7 +398,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Error
+     * @expectedException Exception
      */
     public function testEInsertDifferentFieldValuePairs()
     {
@@ -463,7 +416,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException Error
+     * @expectedException Exception
      */
     public function testEInsertDifferentFieldValuePairs2()
     {
@@ -525,7 +478,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testUpdateInvalidTableNameDatatype()
     {
@@ -563,7 +516,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testReplaceInvalidTableNameDatatype()
     {
@@ -589,7 +542,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testEReplaceInvalidTableNameDatatype()
     {
@@ -650,50 +603,6 @@ final class DatabaseTest extends TestCase
         $this->assertEquals(null, $fd);
     }
 
-    public function testEscapeDontEscapeNow()
-    {
-        // $this->markTestIncomplete();
-        $ret = $this->db->_escape('NOW()', false);
-        $this->assertEquals("NOW()", $ret);
-    }
-
-    public function testEscapeDontEscapeBackticks()
-    {
-        $ret = $this->db->_escape("t.`id`", false);
-        $this->assertEquals("t.`id`", $ret);
-    }
-
-    public function testEscapeEscapeDateTime()
-    {
-        $dt = new DateTime("2017-01-01 00:00:00");
-        $ret = $this->db->_escape($dt);
-        $this->assertEquals("'2017-01-01 00:00:00'", $ret);
-    }
-
-    public function testEscapeBoolean()
-    {
-        $ret = $this->db->_escape(true);
-        $this->assertEquals("'1'", $ret);
-    }
-
-    public function testEscapeClassWithEscapeMethod()
-    {
-        $tc = new TestClass();
-        $tc->var = "test's";
-        $ret = $this->db->_escape($tc);
-        $this->assertEquals("test\'s", $ret);
-    }
-
-    public function testEscapeUnknownClassToEscape()
-    {
-        // $this->markTestIncomplete();
-        $tc2 = new TestClass2();
-        $tc2->var = "test";
-        $ret = $this->db->_escape($tc2);
-
-        $this->assertEquals("", $ret);
-    }
-
     public function testDeleteBasic()
     {
         $this->db->delete("test");
@@ -707,7 +616,6 @@ final class DatabaseTest extends TestCase
         ], [
             [
                 'field' => 'id',
-                'op' => '=',
                 'value' => 1
             ]
         ]);
@@ -723,7 +631,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testDeleteInvalidTableNameDatatype()
     {
@@ -737,7 +645,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testTruncateInvalidTableNameDatatype()
     {
@@ -769,7 +677,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testDropInvalidTableNameDatatype()
     {
@@ -777,7 +685,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * @expectedException TypeError
+     * @expectedException Exception
      */
     public function testDropInvalidTypeDatatype()
     {

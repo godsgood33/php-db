@@ -8,9 +8,29 @@ namespace Godsgood33\Php_Db;
 use Monolog\Logger;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\StreamHandler;
-use Error;
 use Exception;
 use mysqli;
+
+/**
+ * Constant to define that we want to return an object
+ *
+ * @var int
+ */
+define('MYSQLI_OBJECT', 4);
+
+/**
+ * Constant to return consistent date format
+ *
+ * @var string
+ */
+define('MYSQL_DATE', 'Y-m-d');
+
+/**
+ * Constant to return consistent datetime format
+ *
+ * @var string
+ */
+define('MYSQL_DATETIME', 'Y-m-d H:i:s');
 
 /**
  * A generic database class
@@ -191,13 +211,15 @@ class Database
     /**
      * The mysqli connection
      *
+     * @access protected
      * @var \mysqli
      */
-    private $_c;
+    protected $_c;
 
     /**
      * To store the SQL statement
      *
+     * @access private
      * @var string
      */
     private $_sql = null;
@@ -205,6 +227,7 @@ class Database
     /**
      * A variable to store the type of query that is being run
      *
+     * @access private
      * @var int
      */
     private $_queryType = null;
@@ -212,13 +235,15 @@ class Database
     /**
      * The result of the query
      *
+     * @access protected
      * @var mixed
      */
-    private $_result = null;
+    protected $_result = null;
 
     /**
      * Log level
      *
+     * @access private
      * @var string
      */
     private $_logLevel = Logger::ERROR;
@@ -226,6 +251,7 @@ class Database
     /**
      * Variable to store the logger
      *
+     * @access private
      * @var \Monolog\Logger
      */
     private $_logger = null;
@@ -233,16 +259,36 @@ class Database
     /**
      * Path for the logger to log the file
      *
+     * @access private
      * @var string
      */
     private $_logPath = null;
 
     /**
+     * Variable to store the most recent insert ID from an insert query
+     *
+     * @access protected
+     * @var mixed
+     */
+    protected $_insertId = null;
+
+    /**
      * Variable to decide if we need to automatically run the queries after generating them
      *
+     * @access public
+     * @staticvar
      * @var boolean
      */
     public static $autorun = false;
+
+    /**
+     * Variable to decide if the system should create a CLI logger in addition to the file logger
+     *
+     * @access public
+     * @staticvar
+     * @var boolean
+     */
+    public static $cliLog = false;
 
     /**
      * Constructor
@@ -253,32 +299,40 @@ class Database
      *            [optional]
      *            [by ref]
      *            mysqli object to perform queries.
+     * @param int $intLogLevel
      */
-    public function __construct($strLogPath = __DIR__, mysqli &$dbh = null)
+    public function __construct($strLogPath = __DIR__, mysqli &$dbh = null, $intLogLevel = null)
     {
-        require_once 'DBConfig.php';
-        if (! is_null($dbh) && is_a($dbh, "mysqli")) {
+        if(! is_null($dbh) && is_a($dbh, 'mysqli')) {
             $this->_c = $dbh;
+        }
+        elseif(!defined('PHP_DB_SERVER') || !defined('PHP_DB_USER') || !defined('PHP_DB_PWD') || !defined('PHP_DB_SCHEMA')) {
+            throw new Exception("Please create and include a constant file with the following constants defining your DB connection (PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA)", E_USER_ERROR);
         } else {
-            if (PHP_DB_SERVER == '{IP|hostname}' || PHP_DB_USER == '{username}' || PHP_DB_PWD == '{password}' || PHP_DB_SCHEMA == '{schema}') {
-                throw new Error("Need to update DBConfig.php", E_ERROR);
-            }
             $this->_c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA);
         }
 
         if ($this->_c->connect_errno) {
-            throw new Error("Could not create database class due to error {$this->_c->error}", E_ERROR);
+            throw new Exception("Could not create database class due to error {$this->_c->connect_error}", E_ERROR);
         }
 
         $this->_logPath = $strLogPath;
         touch($this->_logPath . "/db.log");
 
+        if(!defined("PHP_DB_LOG_LEVEL") && is_null($intLogLevel)) {
+            $this->_logLevel = Logger::ERROR;
+        } elseif(!is_null($intLogLevel)) {
+            $this->_logLevel = $intLogLevel;
+        } elseif(defined('PHP_DB_LOG_LEVEL')) {
+            $this->_logLevel = PHP_DB_LOG_LEVEL;
+        }
+
         $this->_logger = new Logger('db', [
             new StreamHandler(realpath($this->_logPath . "/db.log"), $this->_logLevel)
         ]);
 
-        if (PHP_SAPI == 'cli') {
-            $stream = new StreamHandler("php://output", $this->_logLevel);
+        if (PHP_SAPI == 'cli' && self::$cliLog) {
+            $stream = new StreamHandler(STDOUT, $this->_logLevel);
             $stream->setFormatter(new LineFormatter("%datetime% %level_name% %message%" . PHP_EOL, "H:i:s.u"));
             $this->_logger->pushHandler($stream);
         }
@@ -317,14 +371,16 @@ class Database
     }
 
     /**
-     * Getter function for _logger
+     * Getter function for _logLevel
      *
      * @return string
      */
     public function getLogLevel()
     {
-        $this->_logger->debug("Getting log level ({$this->_logLevel})");
-        return $this->_logLevel;
+        $level = $this->_logLevel;
+
+        $this->_logger->debug("Getting log level ({$level})");
+        return $level;
     }
 
     /**
@@ -403,7 +459,7 @@ class Database
     {
         $this->_logger->debug("Setting schema to {$strSchema}");
         if (! $this->_c->select_db($strSchema)) {
-            $this->_logger->emergency("Unknown schema {$strSchema}");
+            $this->_logger->emergency("Unknown schema {$strSchema}", [debug_backtrace()]);
             return false;
         }
         return true;
@@ -419,10 +475,9 @@ class Database
      */
     public function setVar($strName, $strVal)
     {
-        if (! $strName || ! $strVal) {
-            $this->_logger->debug("name or value are blank", [
-                'name'  => $strName,
-                'value' => $strVal
+        if (! $strName ) {
+            $this->_logger->debug("name is blank", [
+                'name'  => $strName
             ]);
             return false;
         }
@@ -455,7 +510,7 @@ class Database
      *
      * @return mixed
      */
-    public function execute($return = MYSQLI_ASSOC, $class = null, $strSql = null)
+    public function execute($return = MYSQLI_OBJECT, $strSql = null)
     {
         if (! is_null($strSql)) {
             $this->_sql = $strSql;
@@ -499,7 +554,7 @@ class Database
                 $this->_c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA);
             }
         } else {
-            throw new \Error('Database was not connected', E_ERROR);
+            throw new Exception('Database was not connected', E_ERROR);
         }
 
         $this->_logger->info("Executing {$query} query");
@@ -525,20 +580,8 @@ class Database
                 }
             }
 
-            if ($return == MYSQLI_OBJECT && ! is_null($class) && class_exists(/** @scrutinizer ignore-type */$class)) {
-                $this->_logger->debug("Checking results for query", [
-                    'class' => get_class($class)
-                ]);
-                $this->_result = $this->checkResults($return, $class);
-            } elseif ($return == MYSQLI_OBJECT && is_null($class)) {
-                $this->_logger->debug("Checking results for query", [
-                    'class' => 'stdClass'
-                ]);
-                $this->_result = $this->checkResults($return, 'stdClass');
-            } else {
-                $this->_logger->debug("Checking results for query and returning associative array");
-                $this->_result = $this->checkResults(MYSQLI_ASSOC);
-            }
+            $this->_logger->debug("Checking for query results");
+            $this->_result = $this->checkResults($return);
         } catch (Exception $e) {}
 
         return $this->_result;
@@ -550,127 +593,76 @@ class Database
      * @param mixed $returnType
      *            [optional]
      *            Optional return mysqli_result return type
-     * @param mixed $class
      *
      * @return mixed
      */
-    public function checkResults($returnType = MYSQLI_ASSOC, $class = null)
+    protected function checkResults($returnType)
     {
         $res = null;
 
-        switch ($this->_queryType) {
-            case self::SELECT_COUNT:
-                if (! is_a($this->_result, 'mysqli_result')) {
-                    $this->_logger->error("Error with return on query");
-                    return;
-                }
-
-                if ($this->_result->num_rows == 1) {
-                    $row = $this->_result->fetch_assoc();
-                    if (isset($row['count'])) {
-                        $this->_logger->debug("Returning SELECT_COUNT query", [
-                            'count' => $row['count']
-                        ]);
-                        $res = $row['count'];
-                    }
-                } elseif ($this->_result->num_rows > 1) {
-                    $this->_logger->debug("Returning SELECT_COUNT query", [
-                        'count' => $this->_result->num_rows
-                    ]);
-                    $res = $this->_result->num_rows;
-                }
-
-                mysqli_free_result($this->_result);
-
-                return $res;
-            case self::SELECT:
-                if (! is_a($this->_result, 'mysqli_result')) {
-                    $this->_logger->error("Error with return on query");
-                    return;
-                }
-
-                if ($returnType == MYSQLI_OBJECT && ! is_null($class) && class_exists($class)) {
-                    if ($this->_result->num_rows == 1) {
-                        $this->_logger->debug("Returning object from SELECT query", [
-                            'type' => get_class($class)
-                        ]);
-                        $res = $this->_result->fetch_object($class);
-                    } elseif ($this->_result->num_rows > 1) {
-                        $this->_logger->debug("Returning object array from SELECT query", [
-                            'type' => get_class($class)
-                        ]);
-                        while ($row = $this->_result->fetch_object($class)) {
-                            $res[] = $row;
-                        }
-                    }
-                } else {
-                    if ($this->_result->num_rows == 1) {
-                        $this->_logger->debug("Fetching results");
-                        $res = $this->_result->fetch_array($returnType);
-                    } elseif ($this->_result->num_rows > 1) {
-                        $this->_logger->debug("Fetching results array");
-                        $res = $this->fetchAll($returnType);
-                    }
-                }
-
-                mysqli_free_result($this->_result);
-
-                return $res;
-            case self::INSERT:
-                if ($this->_c->error) {
-                    $this->_logger->error("Database Error {$this->_c->error}");
-                    return 0;
-                }
-
-                if ($this->_c->insert_id) {
-                    $this->_logger->debug("Insert successful returning insert_id", [
-                        'id' => $this->_c->insert_id
-                    ]);
-                    return $this->_c->insert_id;
-                } elseif ($this->_c->affected_rows) {
-                    $this->_logger->debug("Insert successful return affected row count", [
-                        'count' => $this->_c->affected_rows
-                    ]);
-                    return $this->_c->affected_rows;
-                }
-
-                $this->_logger->debug("Insert successful, but no ID so returning 1 for success");
-
-                return 1;
-            // intentional fall through
-            case self::EXTENDED_INSERT:
-            // intentional fall through
-            case self::EXTENDED_REPLACE:
-            // intentional fall through
-            case self::EXTENDED_UPDATE:
-            // intentional fall through
-            case self::REPLACE:
-            // intentional fall through
-            case self::UPDATE:
-            // intentional fall through
-            case self::DELETE:
-            // intentional fall through
-            case self::ALTER_TABLE:
-                if ($this->_c->error) {
-                    $this->_logger->error("Database Error {$this->_c->error}");
-                    return false;
-                } elseif ($this->_c->affected_rows) {
-                    $this->_logger->debug("Returning affected row count for {$this->_queryType}", [
-                        'count' => $this->_c->affected_rows
-                    ]);
-                    return $this->_c->affected_rows;
-                } else {
-                    return true;
-                }
-                break;
-            case self::CREATE_TABLE:
-            // intentional fall through
-            case self::DROP:
-            // intentional fall through
-            case self::TRUNCATE:
-                $this->_logger->debug("Returning from {$this->_queryType}");
-                return true;
+        if (in_array($this->_queryType, [Database::CREATE_TABLE, Database::ALTER_TABLE, Database::TRUNCATE, Database::DROP])) {
+            $res = $this->_result;
         }
+        elseif (in_array($this->_queryType, [Database::INSERT, Database::EXTENDED_INSERT, Database::DELETE, Database::UPDATE, Database::EXTENDED_UPDATE, Database::REPLACE, Database::EXTENDED_REPLACE])) {
+            $res = $this->_c->affected_rows;
+
+            if (in_array($this->_queryType, [Database::INSERT, Database::REPLACE])) {
+                $this->_insertId = $this->_c->insert_id;
+            }
+        }
+        elseif ($this->_queryType == Database::SELECT_COUNT) {
+            if (! is_a($this->_result, 'mysqli_result')) {
+                $this->_logger->error("Error with return on query");
+                return null;
+            }
+
+            if ($this->_result->num_rows == 1) {
+                $row = $this->_result->fetch_assoc();
+                if (isset($row['count'])) {
+                    $this->_logger->debug("Returning SELECT_COUNT query", [
+                        'count' => $row['count']
+                    ]);
+                    $res = $row['count'];
+                }
+            } elseif ($this->_result->num_rows > 1) {
+                $this->_logger->debug("Returning SELECT_COUNT query", [
+                    'count' => $this->_result->num_rows
+                ]);
+                $res = $this->_result->num_rows;
+            }
+
+            mysqli_free_result($this->_result);
+        }
+        else {
+            $method = "mysqli_fetch_object";
+            if($returnType == MYSQLI_ASSOC) {
+                $method = "mysqli_fetch_assoc";
+            } elseif ($returnType == MYSQLI_NUM) {
+                $method = "mysqli_fetch_array";
+            }
+
+            if (is_a($this->_result, 'mysqli_result')) {
+                if($this->_result->num_rows > 1) {
+                    $res = [];
+                    while ($row = call_user_func($method, $this->_result)) {
+                        $res[] = $row;
+                    }
+                } else {
+                    $res = call_user_func($method, $this->_result);
+                }
+            } else {
+                $this->_logger->error("Error with return on query");
+                return null;
+            }
+        }
+
+        if ($this->_c->error) {
+            $this->_logger->error("Encountered a SQL error", ['error' => $this->_c->error, 'list' => $this->_c->error_list]);
+            $this->_logger->debug("Debug", ['debug' => debug_backtrace()]);
+            return null;
+        }
+
+        return $res;
     }
 
     /**
@@ -710,7 +702,7 @@ class Database
      * @see Database::where()
      * @see Database::flags()
      *
-     * @throws \InvalidArgumentException
+     * @throws Exception
      *
      * @return mixed
      */
@@ -719,14 +711,14 @@ class Database
         $this->_sql = null;
         $this->_queryType = self::SELECT;
 
-        if (! is_null($strTableName)) {
+        if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_logger->debug("Starting SELECT query of {$strTableName}", [
                 'fields' => $this->fields($fields)
             ]);
             $this->_sql = "SELECT " . $this->fields($fields) . " FROM $strTableName";
         } else {
-            $this->_logger->emergency("Table name is invalid or wrong type");
-            throw new Error("Table name is invalid");
+            $this->_logger->emergency("Table name is invalid or wrong type", [debug_backtrace()]);
+            throw new Exception("Table name is invalid");
         }
 
         if (isset($arrFlags['joins']) && is_array($arrFlags['joins']) && count($arrFlags['joins'])) {
@@ -755,7 +747,7 @@ class Database
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -783,11 +775,11 @@ class Database
         $this->_sql = null;
         $this->_queryType = self::SELECT_COUNT;
 
-        if (! is_null($strTableName)) {
+        if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "SELECT COUNT(1) AS 'count' FROM $strTableName";
         } else {
-            $this->_logger->emergency("Table name is invalid or wrong type");
-            throw new Error("Table name is invalid");
+            $this->_logger->emergency("Table name is invalid or wrong type", [debug_backtrace()]);
+            throw new Exception("Table name is invalid");
         }
 
         if (isset($arrFlags['joins']) && is_array($arrFlags['joins'])) {
@@ -809,7 +801,7 @@ class Database
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -829,10 +821,10 @@ class Database
         $this->_sql = null;
         $this->_queryType = self::INSERT;
 
-        if (! is_null($strTableName)) {
+        if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "INSERT" . ($blnToIgnore ? " IGNORE" : "") . " INTO $strTableName" . (is_array($arrParams) && count($arrParams) ? " (`" . implode("`,`", array_keys($arrParams)) . "`)" : null);
         } else {
-            throw new Error("Table name is invalid");
+            throw new Exception("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -843,11 +835,11 @@ class Database
         } elseif (is_string($arrParams) && stripos($arrParams, 'SELECT') !== false) {
             $this->_sql .= " {$arrParams}";
         } else {
-            throw new Error("Invalid type passed to insert " . gettype($arrParams));
+            throw new Exception("Invalid type passed to insert " . gettype($arrParams));
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -876,7 +868,7 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "INSERT " . ($blnToIgnore ? "IGNORE " : "") . "INTO $strTableName " . "(`" . implode("`,`", $arrFields) . "`)";
         } else {
-            throw new Error("Table name is invalid");
+            throw new Exception("Table name is invalid");
         }
 
         if (is_array($params) && count($params)) {
@@ -884,10 +876,11 @@ class Database
             if (isset($params[0]) && is_array($params[0])) {
                 foreach ($params as $p) {
                     if (count($p) != count($arrFields)) {
-                        $this->_logger->emergency("Inconsistent number of fields to values in extended_insert", [
-                            $p
+                        $this->_logger->emergency("Inconsistent number of fields to values in extendedInsert", [
+                            $p,
+                            debug_backtrace()
                         ]);
-                        throw new Error("Inconsistent number of fields in fields and values in extended_insert " . print_r($p, true));
+                        throw new Exception("Inconsistent number of fields in fields and values in extendedInsert " . print_r($p, true));
                     }
                     $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($p))) . ")";
 
@@ -901,7 +894,7 @@ class Database
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -941,7 +934,7 @@ class Database
 
             $this->_sql .= " SET ";
         } else {
-            throw new Error("Table name is invalid");
+            throw new Exception("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -957,7 +950,7 @@ class Database
                 }
             }
         } else {
-            throw new Error("No fields to update");
+            throw new Exception("No fields to update");
         }
 
         $this->_sql = substr($this->_sql, 0, - 1);
@@ -977,7 +970,7 @@ class Database
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -1006,7 +999,7 @@ class Database
         if (! is_null($strTableToUpdate) && ! is_null($strOriginalTable) && ! is_null($strLinkField)) {
             $this->_sql .= "$strTableToUpdate tbu INNER JOIN $strOriginalTable o USING ($strLinkField) SET ";
         } else {
-            throw new Error("Missing necessary fields");
+            throw new Exception("Missing necessary fields");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -1023,7 +1016,7 @@ class Database
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -1047,7 +1040,7 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "REPLACE INTO $strTableName " . "(`" . implode("`,`", array_keys($arrParams)) . "`)";
         } else {
-            throw new Error("Table name is invalid");
+            throw new Exception("Table name is invalid");
         }
 
         $this->_sql .= " VALUES (" . implode(",", array_map([
@@ -1056,7 +1049,7 @@ class Database
         ], array_values($arrParams))) . ")";
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -1086,7 +1079,7 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "REPLACE INTO $strTableName " . "(`" . implode("`,`", $arrFields) . "`)";
         } else {
-            throw new Error("Table name is invalid");
+            throw new Exception("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -1104,7 +1097,7 @@ class Database
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -1144,7 +1137,7 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql .= " FROM $strTableName";
         } else {
-            throw new Error("Table name is invalid");
+            throw new Exception("Table name is invalid");
         }
 
         if (! is_null($arrJoins) && is_array($arrJoins) && count($arrJoins)) {
@@ -1162,7 +1155,7 @@ class Database
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -1195,17 +1188,17 @@ class Database
                 $strType = 'VIEW';
                 break;
             default:
-                throw new Error("Invalid type " . gettype($strType), E_ERROR);
+                throw new Exception("Invalid type " . gettype($strType), E_ERROR);
         }
 
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "DROP" . ($blnIsTemp ? " TEMPORARY" : "") . " $strType IF EXISTS `{$strTableName}`";
         } else {
-            throw new Error("Table name is invalid");
+            throw new Exception("Table name is invalid");
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -1217,7 +1210,7 @@ class Database
      * @param string $strTableName
      *            Table to truncate
      *
-     * @throws \Error
+     * @throws Exception
      *
      * @return string|NULL
      */
@@ -1229,11 +1222,11 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "TRUNCATE TABLE $strTableName";
         } else {
-            throw new Error("Table name is invalid");
+            throw new Exception("Table name is invalid");
         }
 
         if (self::$autorun) {
-            return $this->execute(MYSQLI_BOTH);
+            return $this->execute();
         }
 
         return $this->_sql;
@@ -1349,7 +1342,7 @@ class Database
             $this->_sql .= ")";
         }
 
-        $this->execute(MYSQLI_BOTH);
+        $this->execute();
     }
 
     /**
@@ -1542,7 +1535,7 @@ class Database
     public function tableExists($strSchema, $strTableName)
     {
         if (! $this->_c->select_db($strSchema)) {
-            fwrite("php://stdout", $this->_c->error . PHP_EOL);
+            fwrite(STDOUT, $this->_c->error . PHP_EOL);
         }
         $sql = "SHOW TABLES LIKE '{$strTableName}'";
 
@@ -1552,7 +1545,7 @@ class Database
             }
         } else {
             if ($this->_c->errno) {
-                fwrite("php://stdout", $this->_c->error . PHP_EOL);
+                fwrite(STDOUT, $this->_c->error . PHP_EOL);
             }
         }
 
@@ -1582,7 +1575,7 @@ class Database
      *
      * @return string Escaped value
      */
-    public function _escape($val, $blnEscape = true)
+    protected function _escape($val, $blnEscape = true)
     {
         if (is_null($val) || (is_string($val) && strtolower($val) == 'null')) {
             return 'NULL';
@@ -1623,7 +1616,7 @@ class Database
      *
      * @return mixed
      */
-    public function fetchAll($intResultType = MYSQLI_ASSOC)
+    protected function fetchAll($intResultType = MYSQLI_ASSOC)
     {
         $res = [];
         if (method_exists('mysqli_result', 'fetch_all')) { // Compatibility layer with PHP < 5.3
@@ -1646,7 +1639,7 @@ class Database
      *
      * @return string
      */
-    public function fields($fields = null)
+    protected function fields($fields = null)
     {
         $ret = null;
 
@@ -1695,7 +1688,7 @@ class Database
      *
      * @return string
      */
-    public function flags($arrFlags)
+    protected function flags($arrFlags)
     {
         $ret = '';
 
@@ -1735,7 +1728,7 @@ class Database
      *
      * @return string
      */
-    public function groups($groups)
+    protected function groups($groups)
     {
         $ret = '';
         if (is_array($groups) && count($groups)) {
@@ -1764,7 +1757,7 @@ class Database
      *
      * @return string
      */
-    public function order($order)
+    protected function order($order)
     {
         $ret = '';
         if (is_array($order)) {
@@ -1808,7 +1801,7 @@ class Database
      * @param array $arrClause
      * @param int $intIndex
      */
-    public function parseClause($arrClause, $intIndex)
+    protected function parseClause($arrClause, $intIndex)
     {
         $ret = null;
 
@@ -1880,7 +1873,7 @@ class Database
 
             if (isset($arrClause['case_insensitive']) && $arrClause['case_insensitive']) {
                 $ret .= " LOWER({$field}) {$op} LOWER({$this->_escape($arrClause['value'])})";
-            } elseif (preg_match("/\(SELECT/", $arrClause['value'])) {
+            } elseif (is_string($arrClause['value']) && preg_match("/\(SELECT/", $arrClause['value'])) {
                 $ret .= " {$field} {$op} {$arrClause['value']}";
             } else {
                 $ret .= " {$field} {$op} {$value}";
