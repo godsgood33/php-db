@@ -5,6 +5,7 @@ use PHPUnit\Framework\TestCase;
 
 require_once 'TestClass.php'; // class with _escape method
 require_once 'TestClass2.php'; // class without _escape method
+require_once 'TestClass3.php';
 require_once 'DBConfig.php';
 
 /**
@@ -45,7 +46,13 @@ final class DatabaseTest extends TestCase
 
     public function testPassInMysqliConnection()
     {
-        $conn = new mysqli(PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA);
+        if(defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
+            $pwd = Database::decrypt(PHP_DB_PWD);
+        } else {
+            $pwd = PHP_DB_PWD;
+        }
+
+        $conn = new mysqli(PHP_DB_SERVER, PHP_DB_USER, $pwd, PHP_DB_SCHEMA);
         if ($conn->connect_errno) {
             fwrite(STDOUT, $conn->connect_error);
         }
@@ -307,6 +314,13 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("INSERT IGNORE INTO test (`id`,`name`) VALUES ('1','Ed')", $this->db->getSql());
     }
 
+    public function testInsertWithDBInterfaceClass()
+    {
+        $tc = new TestClass3();
+        $this->db->insert("settings", $tc);
+        $this->assertEquals("INSERT INTO settings (`meta_key`,`meta_value`) VALUES ('test3','test3')", $this->db->getSql());
+    }
+
     public function testInsertWithSelectStatement()
     {
         // insert query using SELECT statement
@@ -397,6 +411,13 @@ final class DatabaseTest extends TestCase
         $this->db->extendedInsert(new stdClass(), [], []);
     }
 
+    public function testEInsertWithDBInterfaceClass()
+    {
+        $tc = new TestClass3();
+        $this->db->extendedInsert("settings", ['meta_key', 'meta_value'], $tc);
+        $this->assertEquals("INSERT INTO settings (`meta_key`,`meta_value`) VALUES ('test1','test1'),('test2','test2')", $this->db->getSql());
+    }
+
     /**
      * @expectedException Exception
      */
@@ -480,9 +501,32 @@ final class DatabaseTest extends TestCase
     /**
      * @expectedException Exception
      */
-    public function testUpdateInvalidTableNameDatatype()
+    public function testUpdateWithInvalidTableName()
     {
         $this->db->update(new stdClass(), []);
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testUpdateWithNonDBInterfaceParamClass()
+    {
+        $this->db->update("settings", new stdClass());
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testUpdateWithInvalidType()
+    {
+        $this->db->update("settings", 1);
+    }
+
+    public function testUpdateWithDBInterfaceClass()
+    {
+        $tc = new TestClass3();
+        $this->db->update("settings", $tc);
+        $this->assertEquals("UPDATE settings SET `meta_value`='george'", $this->db->getSql());
     }
 
     public function testEUpdateWithArrayList()
@@ -698,5 +742,21 @@ final class DatabaseTest extends TestCase
         $this->db->setSchema("test");
         $row = $this->db->query("SELECT DATABASE()");
         $this->assertEquals("test", $row->fetch_array()[0]);
+    }
+
+    /**
+     * 
+     */
+    public function testGetQueryType()
+    {
+        $this->db->insert("settings", ['meta_key' => 'hello', 'meta_value' => 'world']);
+        $this->assertEquals(Database::INSERT, $this->db->getQueryType());
+    }
+
+    public function testSetQueryType()
+    {
+        $this->db->insert("settings", ['meta_key' => 'hello', 'meta_value' => 'world']);
+        $this->db->setQueryType(Database::REPLACE);
+        $this->assertEquals(Database::REPLACE, $this->db->getQueryType());
     }
 }

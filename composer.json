@@ -1,6 +1,7 @@
 {
 	"require" : {
-		"monolog/monolog" : "~1.23"
+		"monolog/monolog" : "~1.23",
+		"ext-openssl" : "*"
 	},
 	"name" : "godsgood33/php-db",
 	"description" : "PHP Database Library",

@@ -1,8 +1,4 @@
 <?php
-
-/**
- *
- */
 namespace Godsgood33\Php_Db;
 
 use Monolog\Logger;
@@ -144,6 +140,13 @@ class Database
      * @var integer
      */
     const MODIFY_COLUMN = 3;
+
+    /**
+     * Constant defining action to add a constraint
+     * 
+     * @var integer
+     */
+    const ADD_CONSTRAINT = 4;
 
     /**
      * Constant defining a TRUNCATE TABLE query
@@ -305,13 +308,20 @@ class Database
     {
         if(! is_null($dbh) && is_a($dbh, 'mysqli')) {
             $this->_c = $dbh;
-        }
-        elseif(!defined('PHP_DB_SERVER') || !defined('PHP_DB_USER') || !defined('PHP_DB_PWD') || !defined('PHP_DB_SCHEMA')) {
+        } elseif(!defined('PHP_DB_SERVER') || !defined('PHP_DB_USER') || !defined('PHP_DB_PWD') || !defined('PHP_DB_SCHEMA')) {
             throw new Exception("Please create and include a constant file with the following constants defining your DB connection (PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA)", E_USER_ERROR);
+        } elseif(defined('PHP_DB_ENCRYPT') && (!defined('PHP_DB_ENCRYPT_ALGORITHM') || !defined('PHP_DB_ENCRYPT_SALT'))) {
+            throw new Exception("Missing required PHP_DB_ENCRYPT_ALGORITHM or PHP_DB_ENCRYPT_SALT constants");
+        }
+        
+        if(defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
+            $pwd = $this->decrypt(PHP_DB_PWD);
         } else {
-            $this->_c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA);
+            $pwd = PHP_DB_PWD;
         }
 
+        $this->_c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, $pwd, PHP_DB_SCHEMA);
+        
         if ($this->_c->connect_errno) {
             throw new Exception("Could not create database class due to error {$this->_c->connect_error}", E_ERROR);
         }
@@ -516,6 +526,7 @@ class Database
             $this->_sql = $strSql;
         }
 
+        $this->_result = false;
         $query = 'SELECT';
         switch ($this->_queryType) {
             case self::SELECT_COUNT:
@@ -822,18 +833,30 @@ class Database
         $this->_queryType = self::INSERT;
 
         if (! is_null($strTableName) && is_string($strTableName)) {
-            $this->_sql = "INSERT" . ($blnToIgnore ? " IGNORE" : "") . " INTO $strTableName" . (is_array($arrParams) && count($arrParams) ? " (`" . implode("`,`", array_keys($arrParams)) . "`)" : null);
+            $this->_sql = "INSERT" . ($blnToIgnore ? " IGNORE" : "") . " INTO {$strTableName}";
         } else {
             throw new Exception("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
+            if(is_array($arrParams) && count($arrParams)) {
+                $this->_sql .= " (`" . implode("`,`", array_keys($arrParams)) . "`)";
+            }
             $this->_sql .= " VALUES (" . implode(",", array_map([
                 $this,
                 '_escape'
             ], array_values($arrParams))) . ")";
-        } elseif (is_string($arrParams) && stripos($arrParams, 'SELECT') !== false) {
+        } elseif (is_string($arrParams) && strpos(strtolower($arrParams), 'select') !== false) {
             $this->_sql .= " {$arrParams}";
+        } elseif (is_object($arrParams)) {
+            $interfaces = \class_implements($arrParams);
+            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces)) {
+                $params = \call_user_func([$arrParams, "insert"]);
+                $this->_sql .= " (`" . implode("`,`", array_keys($params)) . "`) VALUES ";
+                $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
+            } else {
+                throw new Exception("Object does not implement the DBInterface interface and methods");
+            }
         } else {
             throw new Exception("Invalid type passed to insert " . gettype($arrParams));
         }
@@ -891,6 +914,15 @@ class Database
             } else {
                 $this->_sql .= "(" . implode("),(", array_map([$this, '_escape'], array_values($params))) . ")";
             }
+        } elseif (is_object($params)) {
+            $interfaces = \class_implements($params);
+            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($params) . "::extendedInsert")) {
+                $this->_sql .= " VALUES " . \call_user_func([$params, "extendedInsert"]);
+            } else {
+                throw new Exception("Params passed are an object that do not implement DBInterface");
+            }
+        } else {
+            throw new Exception("Invalid param type");
         }
 
         if (self::$autorun) {
@@ -944,16 +976,25 @@ class Database
                 }
 
                 if (! is_null($p)) {
-                    $this->_sql .= "$f={$this->_escape($p)},";
+                    $this->_sql .= "$f={$this->_escape($p)}";
                 } else {
-                    $this->_sql .= "$f=NULL,";
+                    $this->_sql .= "$f=NULL";
                 }
+
+                if($p != end($arrParams)) {
+                    $this->_sql .= ",";
+                }
+            }
+        } elseif (is_object($arrParams)) {
+            $interfaces = \class_implements($arrParams);
+            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::update")) {
+                $this->_sql .= \call_user_func([$arrParams, "update"]);
+            } else {
+                throw new Exception("Params is an object that doesn't implement DBInterface");
             }
         } else {
             throw new Exception("No fields to update");
         }
-
-        $this->_sql = substr($this->_sql, 0, - 1);
 
         if (! is_null($arrWhere) && is_array($arrWhere) && count($arrWhere)) {
             $where_str = " WHERE";
@@ -1038,15 +1079,28 @@ class Database
         $this->_queryType = self::REPLACE;
 
         if (! is_null($strTableName) && is_string($strTableName)) {
-            $this->_sql = "REPLACE INTO $strTableName " . "(`" . implode("`,`", array_keys($arrParams)) . "`)";
+            $this->_sql = "REPLACE INTO $strTableName ";
         } else {
             throw new Exception("Table name is invalid");
         }
 
-        $this->_sql .= " VALUES (" . implode(",", array_map([
-            $this,
-            '_escape'
-        ], array_values($arrParams))) . ")";
+        if(is_array($arrParams) && count($arrParams)) {
+            $keys = array_keys($arrParams);
+            $vals = array_values($arrParams);
+
+            $this->_sql .= "(`" . implode("`,`", $keys) . "`)";
+            $this->_sql .= " VALUES (" . implode(",", array_map([
+                $this,
+                '_escape'
+            ], array_values($vals))) . ")";
+        } elseif (is_object($arrParams)) {
+            $interfaces = class_implements($arrParams);
+            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable($params . "::replace")) {
+                $params = \call_user_method("replace", $params);
+                $this->_sql .= "(`" . implode("`,`", array_keys($params)) . "`) VALUES ";
+                $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
+            }
+        }
 
         if (self::$autorun) {
             return $this->execute();
@@ -1293,18 +1347,18 @@ class Database
         foreach ($json->fields as $field) {
             $this->_sql .= "`{$field->name}` {$field->dataType}";
 
-            if ($field->dataType == 'enum') {
+            if ($field->dataType == 'enum' && isset($field->values)) {
                 $this->_sql .= "('" . implode("','", $field->values) . "')";
             }
 
-            if ($field->ai) {
+            if (isset($field->ai) && $field->ai) {
                 $this->_sql .= " AUTO_INCREMENT";
             }
 
-            if ($field->nn) {
+            if (isset($field->nn) && $field->nn) {
                 $this->_sql .= " NOT NULL";
-            } else {
-                if ($field->default === null) {
+            } elseif(isset($field->default)) {
+                if (strtolower($field->default) == 'null') {
                     $this->_sql .= " DEFAULT NULL";
                 } elseif (strlen($field->default)) {
                     $this->_sql .= " DEFAULT '{$field->default}'";
@@ -1318,7 +1372,16 @@ class Database
 
         if (isset($json->index) && count($json->index)) {
             foreach ($json->index as $ind) {
-                $this->_sql .= ", " . strtoupper($ind->type) . " `{$ind->id}` (`{$ind->ref}`)";
+                if(is_array($ind->ref)) {
+                    $ref = "";
+                    foreach($ind->ref as $r) {
+                        $ref .= "`{$r}` ASC,";
+                    }
+                    $ref = substr($ref, 0, -1);
+                } elseif(is_string($ind->ref)) {
+                    $ref = $ind->ref;
+                }
+                $this->_sql .= ", " . strtoupper($ind->type) . " `{$ind->id}` (`{$ref}`)";
             }
         }
 
@@ -1351,7 +1414,7 @@ class Database
      * @param string $strTableName
      *            Table to alter
      * @param int $intAction
-     *            What action should be taken ('add-column', 'drop-column', 'modify-column')
+     *            What action should be taken
      * @param mixed $arrParams
      *            For add column this is a stdClass object that has the same elements as the example json
      *
@@ -1389,6 +1452,18 @@ class Database
                 $default = " DEFAULT {$this->_escape($arrParams->default)}";
             }
             $this->_sql .= " `{$arrParams->name}` `{$arrParams->new_name}` {$arrParams->dataType}" . $nn . $default;
+        } elseif ($intAction == self::ADD_CONSTRAINT) {
+            if(is_array($arrParams->field) && is_array($arrParams->local)) {
+                $field = "`" . implode("`,`", $arrParams->field) . "`";
+                $local = "`" . implode("`,`", $arrParams->local) . "`";
+            } elseif(is_string($arrParams->field) && is_string($arrParams->local)) {
+                $field = "`{$arrParams->field}`";
+                $local = "`{$arrParams->local}`";
+            } else {
+                $this->_logger->critical("Error in reading constraint field");
+                throw new Exception("Error in reading constraint field");
+            }
+            $this->_sql .= " ADD CONSTRAINT `{$arrParams->id}` FOREIGN KEY ({$local}) REFERENCES `{$arrParams->schema}`.`{$arrParams->table}` ({$field}) ON DELETE {$arrParams->delete} ON UPDATE {$arrParams->update}";
         }
 
         if (self::$autorun) {
@@ -1885,5 +1960,59 @@ class Database
         }
 
         return $ret;
+    }
+
+    /**
+     * Encryption algorithm
+     *
+     * @param string $data
+     * @param string $key
+     * 
+     * @throws Exception
+     * 
+     * @return string
+     */
+    public static function encrypt($data, $salt = null)
+    {
+        if(!defined('PHP_DB_ENCRYPT_SALT') || !defined('PHP_DB_ENCRYPT_ALGORITHM')) {
+            throw new Exception("Need to declare and populate PHP_DB_ENCRYPT_SALT and PHP_DB_ENCRYPT_ALGORITHM");
+        }
+
+        // Remove the base64 encoding from our key
+        if (is_null($salt)) {
+            $encryption_key = base64_decode(PHP_DB_ENCRYPT_SALT);
+        } else {
+            $encryption_key = base64_decode($salt);
+        }
+        // Generate an initialization vector
+        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length(PHP_DB_ENCRYPT_ALGORITHM));
+        // Encrypt the data using AES 256 encryption in CBC mode using our encryption key and initialization vector.
+        $encrypted = openssl_encrypt($data, PHP_DB_ENCRYPT_ALGORITHM, $encryption_key, 0, $iv);
+        // The $iv is just as important as the key for decrypting, so save it with our encrypted data using a unique separator (::)
+        return base64_encode($encrypted . '::' . $iv);
+    }
+
+    /**
+     * Decryption algorithm
+     *
+     * @param string $data
+     * 
+     * @throws Exception
+     * 
+     * @return string
+     */
+    public static function decrypt($data)
+    {
+        if(!defined('PHP_DB_ENCRYPT_SALT') || !defined('PHP_DB_ENCRYPT_ALGORITHM')) {
+            throw new Exception("Need to declare and populate PHP_DB_ENCRYPT_SALT and PHP_DB_ENCRYPT_ALGORITHM");
+        }
+
+        // Remove the base64 encoding from our key
+        $encryption_key = base64_decode(PHP_DB_ENCRYPT_SALT);
+
+        // To decrypt, split the encrypted data from our IV - our unique separator used was "::"
+        list($encrypted_data, $iv) = explode('::', base64_decode($data), 2);
+        $plaintext = openssl_decrypt($encrypted_data, PHP_DB_ENCRYPT_ALGORITHM, $encryption_key, 0, $iv);
+        return $plaintext;
     }
 }
