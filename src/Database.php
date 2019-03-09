@@ -850,7 +850,7 @@ class Database
             $this->_sql .= " {$arrParams}";
         } elseif (is_object($arrParams)) {
             $interfaces = \class_implements($arrParams);
-            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces)) {
+            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::insert")) {
                 $params = \call_user_func([$arrParams, "insert"]);
                 $this->_sql .= " (`" . implode("`,`", array_keys($params)) . "`) VALUES ";
                 $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
@@ -1095,8 +1095,8 @@ class Database
             ], array_values($vals))) . ")";
         } elseif (is_object($arrParams)) {
             $interfaces = class_implements($arrParams);
-            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable($params . "::replace")) {
-                $params = \call_user_method("replace", $params);
+            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::replace")) {
+                $params = \call_user_func([$arrParams, "replace"]);
                 $this->_sql .= "(`" . implode("`,`", array_keys($params)) . "`) VALUES ";
                 $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
             }
@@ -1372,6 +1372,7 @@ class Database
 
         if (isset($json->index) && count($json->index)) {
             foreach ($json->index as $ind) {
+                $ref = null;
                 if(is_array($ind->ref)) {
                     $ref = "";
                     foreach($ind->ref as $r) {
@@ -1381,7 +1382,9 @@ class Database
                 } elseif(is_string($ind->ref)) {
                     $ref = $ind->ref;
                 }
-                $this->_sql .= ", " . strtoupper($ind->type) . " `{$ind->id}` (`{$ref}`)";
+                if(!is_null($ref)) {
+                    $this->_sql .= ", " . strtoupper($ind->type) . " `{$ind->id}` (`{$ref}`)";
+                }
             }
         }
 
