@@ -970,18 +970,20 @@ class Database
         }
 
         if (is_array($arrParams) && count($arrParams)) {
+            $keys = array_keys($arrParams);
             foreach ($arrParams as $f => $p) {
+                $field = $f;
                 if ((strpos($f, "`") === false) && (strpos($f, ".") === false) && (strpos($f, "*") === false) && (stripos($f, " as ") === false)) {
-                    $f = "`{$f}`";
+                    $field = "`{$f}`";
                 }
 
                 if (! is_null($p)) {
-                    $this->_sql .= "$f={$this->_escape($p)}";
+                    $this->_sql .= "$field={$this->_escape($p)}";
                 } else {
-                    $this->_sql .= "$f=NULL";
+                    $this->_sql .= "$field=NULL";
                 }
 
-                if($p != end($arrParams)) {
+                if($f != end($keys)) {
                     $this->_sql .= ",";
                 }
             }
@@ -1428,7 +1430,7 @@ class Database
         $this->_queryType = self::ALTER_TABLE;
         $this->_sql = "ALTER TABLE $strTableName";
         if ($intAction == self::ADD_COLUMN) {
-            $nn = ($arrParams->nn ? " NOT NULL" : "");
+            $nn = (isset($arrParams->nn) && $arrParams->nn ? " NOT NULL" : "");
             $default = null;
             if ($arrParams->default === null) {
                 $default = " DEFAULT NULL";
@@ -1447,7 +1449,7 @@ class Database
             }
         } elseif ($intAction == self::MODIFY_COLUMN) {
             $this->_sql .= " MODIFY COLUMN";
-            $nn = ($arrParams->nn ? " NOT NULL" : "");
+            $nn = (isset($arrParams->nn) && $arrParams->nn ? " NOT NULL" : "");
             $default = null;
             if ($arrParams->default === null) {
                 $default = " DEFAULT NULL";
