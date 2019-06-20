@@ -1,7 +1,8 @@
 {
 	"require" : {
-		"monolog/monolog" : "~1.23",
-		"ext-openssl" : "*"
+		"monolog/monolog" : "~1.24",
+		"ext-openssl" : "*",
+        "ext-mysqli" : "*"
 	},
 	"name" : "godsgood33/php-db",
 	"description" : "PHP Database Library",
@@ -33,6 +34,6 @@
 		"vendor-dir" : "vendor"
 	},
 	"require-dev" : {
-		"phpunit/phpunit" : "~7.4"
+		"phpunit/phpunit" : "~7.5"
 	}
 }

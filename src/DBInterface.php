@@ -1,6 +1,11 @@
 <?php
 namespace Godsgood33\Php_Db;
 
+/**
+ * Interface to allow for easier insert, update, and replacements
+ * 
+ * @author Ryan Prather <godsgood33@gmail.com>
+ */
 interface DBInterface
 {
 
@@ -18,18 +23,6 @@ interface DBInterface
      *      ]
      */
     public function insert();
-
-    /**
-     * Required extendedInsert method to return an extended insert statement for the class
-     * 
-     * @return string
-     *      String returned is list of all parameters and rows that need to be inserted on the table include parens and comma's
-     *      Must be properly escaped, encoded, and/or encrypted
-     * 
-     * @example
-     *      "('1','name','phone'),('2','name2','phone2'),..."
-     */
-    public function extendedInsert();
 
     /**
      * Required update method to return an update statement for the class

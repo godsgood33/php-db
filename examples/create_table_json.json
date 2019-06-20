@@ -13,31 +13,17 @@
 				{
 					"name": "id",
 					"dataType": "int(11)",
-					"type": 3,
-					"length": 11,
-					"values": [],
 					"ai": true,
-					"nn": true,
-					"default": ""
+					"nn": true
 				},
 				{
 					"name": "meta_key",
 					"dataType": "varchar(100)",
-					"type": 253,
-					"length": 100,
-					"values": [],
-					"ai": false,
-					"nn": true,
-					"default": ""
+					"nn": true
 				},
 				{
 					"name": "meta_value",
 					"dataType": "mediumtext",
-					"type": 250,
-					"length": null,
-					"values": [],
-					"ai": false,
-					"nn": false,
 					"default": "null"
 				}
 			]
@@ -53,56 +39,27 @@
 				{
 					"name": "id",
 					"dataType": "int(11)",
-					"type": 3,
-					"length": 11,
-					"values": [],
 					"ai": true,
-					"nn": true,
-					"default": ""
+					"nn": true
 				},
 				{
 					"name": "fk",
 					"dataType": "int(11)",
-					"type": 3,
-					"length": 11,
-					"values": [],
-					"ai": false,
-					"nn": true,
-					"default": ""
+					"nn": true
 				},
 				{
 					"name": "default",
 					"dataType": "tinyint(1)",
-					"type": 1,
-					"length": 1,
-					"values": [],
-					"ai": false,
-					"nn": false,
 					"default": "0"
 				},
 				{
 					"name": "enum",
 					"dataType": "enum",
-					"type": 247,
-					"length": null,
 					"values": [
 						"1",
 						"2"
 					],
-					"ai": false,
-					"nn": false,
 					"default": "1"
-				}
-			],
-			"constraints": [
-				{
-					"id": "con_1",
-					"local": "fk",
-					"schema": "db",
-					"table": "test",
-					"field": "id",
-					"update": null,
-					"delete": null
 				}
 			],
 			"index": [
@@ -123,14 +80,27 @@
 				{
 					"name": "id",
 					"dataType": "int(11)",
-					"type": 3,
-					"length": 11,
-					"values": [],
 					"ai": true,
-					"nn": true,
-					"default": ""
+					"nn": true
 				}
 			]
 		}
-	]
+	],
+    "table_constraints" : [
+        {
+            "schema" : "db",
+            "table" : "test",
+            "constraints": [
+                {
+                    "id": "con_1",
+                    "local": "fk",
+                    "schema": "db",
+                    "table": "test",
+                    "field": "id",
+                    "update": "CASCADE",
+                    "delete": "CASCADE"
+                }
+            ]
+        }
+    ]
 }

@@ -1,5 +1,6 @@
 <?php
 use Godsgood33\Php_Db\Database;
+use Godsgood33\Php_Db\DBWhere;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 
@@ -31,6 +32,12 @@ final class DatabaseTest extends TestCase
     {
         $schema = $this->db->getSchema();
         $this->assertEquals("db", $schema);
+    }
+
+    public function testSetVarNullName()
+    {
+        $ret = $this->db->setVar(null, null);
+        $this->assertFalse($ret);
     }
 
     public function testSetSchemaWithNonExistentSchema()
@@ -142,13 +149,18 @@ final class DatabaseTest extends TestCase
 
     public function testSelectWithImcompleteWhereArrayParameter()
     {
+        $where = new DBWhere('id');
         // query with incomplete WHERE clause
-        $this->db->select("test", 'id', [
-            [
-                'field' => 'id'
-            ]
-        ]);
-        $this->assertEquals("SELECT id FROM test", $this->db->getSql());
+        $this->db->select("test", 'id', $where);
+        $this->assertEquals("SELECT id FROM test WHERE `id` = NULL", $this->db->getSql());
+    }
+
+    public function testSelectWithMultipleWhereClauses()
+    {
+        $where1 = new DBWhere("name", "Frank");
+        $where2 = new DBWhere("state", "IN");
+        $this->db->select("test", null, [$where1, $where2]);
+        $this->assertEquals("SELECT * FROM test WHERE `name` = 'Frank' AND `state` = 'IN'", $this->db->getSql());
     }
 
     public function testCreateTemporaryTable()
@@ -201,7 +213,7 @@ final class DatabaseTest extends TestCase
         $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
 
         $this->db->createTableJson($json->tables[1]);
-        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test` (`id` int(11) AUTO_INCREMENT NOT NULL,`fk` int(11) NOT NULL,`default` tinyint(1) DEFAULT '0',`enum` enum('1','2') DEFAULT '1', INDEX `default_idx` (`default`), CONSTRAINT `con_1` FOREIGN KEY (`fk`) REFERENCES `db`.`test` (`id`) ON DELETE NO ACTION ON UPDATE NO ACTION, PRIMARY KEY(`id`,`fk`))", $this->db->getSql());
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test` (`id` int(11) AUTO_INCREMENT NOT NULL,`fk` int(11) NOT NULL,`default` tinyint(1) DEFAULT '0',`enum` enum('1','2') DEFAULT '1', INDEX `default_idx` (`default`), PRIMARY KEY(`id`,`fk`))", $this->db->getSql());
     }
 
     public function testCreateTableJson3()
@@ -282,12 +294,8 @@ final class DatabaseTest extends TestCase
 
     public function testSelectCountWithArrayWhereParameter()
     {
-        $this->db->selectCount("test", [
-            [
-                'field' => 'name',
-                'value' => 'Ed'
-            ]
-        ], [
+        $where = new DBWhere('name', $this->db->_escape('Ed'));
+        $this->db->selectCount("test", [$where], [
             'joins' => [
                 "JOIN settings s ON s.id = test.id"
             ]
@@ -357,12 +365,8 @@ final class DatabaseTest extends TestCase
 
     public function testSelectRetrieveSingleRowObject()
     {
-        $this->db->select('settings', null, [
-            [
-                'field' => 'id',
-                'value' => 1
-            ]
-        ]);
+        $where = new DBWhere('id', 1);
+        $this->db->select('settings', null, [$where]);
         $row = $this->db->execute();
 
         $this->assertTrue(is_object($row));
@@ -409,13 +413,6 @@ final class DatabaseTest extends TestCase
     public function testEInsertInvalidTableNameDatatype()
     {
         $this->db->extendedInsert(new stdClass(), [], []);
-    }
-
-    public function testEInsertWithDBInterfaceClass()
-    {
-        $tc = new TestClass3();
-        $this->db->extendedInsert("settings", ['meta_key', 'meta_value'], $tc);
-        $this->assertEquals("INSERT INTO settings (`meta_key`,`meta_value`) VALUES ('test1','test1'),('test2','test2')", $this->db->getSql());
     }
 
     /**
@@ -465,14 +462,10 @@ final class DatabaseTest extends TestCase
 
     public function testUpdateWithOneElementAndWhereArray()
     {
+        $where = new DBWhere('id', 1);
         $this->db->update('test', [
             'name' => 'Frank'
-        ], [
-            [
-                'field' => 'id',
-                'value' => 1
-            ]
-        ]);
+        ], [$where]);
         $this->assertEquals("UPDATE test SET `name`='Frank' WHERE `id` = '1'", $this->db->getSql());
     }
 
@@ -655,14 +648,10 @@ final class DatabaseTest extends TestCase
 
     public function testDeleteWithWhereClause()
     {
+        $where = new DBWhere('id', 1);
         $this->db->delete('test', [
             'id'
-        ], [
-            [
-                'field' => 'id',
-                'value' => 1
-            ]
-        ]);
+        ], [$where]);
         $this->assertEquals("DELETE id FROM test WHERE `id` = '1'", $this->db->getSql());
     }
 
@@ -758,5 +747,58 @@ final class DatabaseTest extends TestCase
         $this->db->insert("settings", ['meta_key' => 'hello', 'meta_value' => 'world']);
         $this->db->setQueryType(Database::REPLACE);
         $this->assertEquals(Database::REPLACE, $this->db->getQueryType());
+    }
+
+    public function testEscapeDateTime()
+    {
+        $dt = new DateTime('2019-01-01 00:00:00');
+        $where = new DBWhere('date', $dt, ">=");
+        $this->db->select("test", null, $where);
+        $this->assertEquals("SELECT * FROM test WHERE `date` >= '2019-01-01 00:00:00'", $this->db->getSql());
+    }
+
+    public function testEscapeBoolean()
+    {
+        $bool = true;
+        $where = new DBWhere('active', $bool);
+        $this->db->select('test', null, $where);
+        $this->assertEquals("SELECT * FROM test WHERE `active` = '1'", $this->db->getSql());
+    }
+
+    public function testEscapeArray()
+    {
+        $arr = ['Fred', 'Barney'];
+        $where = new DBWhere('name', $arr, DBWhere::IN);
+        $this->db->select('test', null, $where);
+        $this->assertEquals("SELECT * FROM test WHERE `name` IN ('Fred','Barney')", $this->db->getSql());
+    }
+
+    public function testEscapeObject()
+    {
+        $ob = new \TestClass();
+        $ob->var = "This is Frank's";
+        $where = new DBWhere('comment', $ob);
+        $this->db->select('test', null, $where);
+        $this->assertEquals("SELECT * FROM test WHERE `comment` = This is Frank\'s", $this->db->getSql());
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testEscapeObjectNoMethod()
+    {
+        $ob = new \TestClass2();
+        $where = new DBWhere('test', $ob);
+        $ret = $this->db->select('test', null, $where);
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testEscapeInvalidMethodReturn()
+    {
+        $ob = new \TestClass4();
+        $where = new DBWhere('test', $ob);
+        $this->db->select('test', null, $where);
     }
 }

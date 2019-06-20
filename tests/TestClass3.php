@@ -10,11 +10,6 @@ class TestClass3 implements Godsgood33\Php_Db\DBInterface
         ];
     }
 
-    public function extendedInsert()
-    {
-        return "('test1','test1'),('test2','test2')";
-    }
-
     public function update()
     {
         return "`meta_value`='george'";

@@ -31,7 +31,7 @@ define('MYSQL_DATETIME', 'Y-m-d H:i:s');
 /**
  * A generic database class
  *
- * @author Ryan Prather
+ * @author Ryan Prather <godsgood33@gmail.com>
  */
 class Database
 {
@@ -154,62 +154,6 @@ class Database
      * @var integer
      */
     const TRUNCATE = 13;
-
-    /**
-     * Global to represent an IN statement (e.g.
-     * WHERE field IN (1,2))
-     *
-     * @var string
-     */
-    const IN = 'IN';
-
-    /**
-     * Global to represent a NOT IN statement (e.g.
-     * WHERE field NOT IN (1,2))
-     *
-     * @var string
-     */
-    const NOT_IN = 'NOT IN';
-
-    /**
-     * Global to represent a BETWEEN statement (e.g.
-     * WHERE field BETWEEN 1 and 2)
-     *
-     * @var string
-     */
-    const BETWEEN = 'BETWEEN';
-
-    /**
-     * Global to represent a LIKE statement (e.g.
-     * WHERE field LIKE '%value%')
-     *
-     * @var string
-     */
-    const LIKE = 'LIKE';
-
-    /**
-     * Global to represent a NOT LIKE statement (e.g.
-     * WHERE field NOT LIKE '%value%')
-     *
-     * @var string
-     */
-    const NOT_LIKE = 'NOT LIKE';
-
-    /**
-     * Global to represent an IS statement (e.g.
-     * WHERE field IS NULL)
-     *
-     * @var string
-     */
-    const IS = 'IS';
-
-    /**
-     * Global to represent an IS NOT statement (e.g.
-     * WHERE field IS NOT NULL)
-     *
-     * @var string
-     */
-    const IS_NOT = 'IS NOT';
 
     /**
      * The mysqli connection
@@ -457,7 +401,6 @@ class Database
             $this->_logger->debug("Getting schema {$row[0]}");
             return $row[0];
         }
-        return null;
     }
 
     /**
@@ -741,11 +684,16 @@ class Database
             $this->_logger->debug("No joins");
         }
 
-        if (! is_null($arrWhere) && is_array($arrWhere) && count($arrWhere)) {
+        $where = $this->parseClause($arrWhere);
+
+        if (! is_null($where) && is_array($where) && count($where)) {
             $where_str = " WHERE";
             $this->_logger->debug("Parsing where clause and adding to query");
-            foreach ($arrWhere as $x => $w) {
-                $where_str .= $this->parseClause($w, $x);
+            foreach ($where as $x => $w) {
+                if($x > 0) {
+                    $where_str .= " {$w->sqlOperator}";
+                }
+                $where_str .= $w;
             }
             if (strlen($where_str) > strlen(" WHERE")) {
                 $this->_sql .= $where_str;
@@ -797,10 +745,16 @@ class Database
             $this->_sql .= " " . implode(" ", $arrFlags['joins']);
         }
 
-        if (! is_null($arrWhere) && is_array($arrWhere) && count($arrWhere)) {
+        $where = $this->parseClause($arrWhere);
+
+        if (! is_null($where) && is_array($where) && count($where)) {
             $where_str = " WHERE";
-            foreach ($arrWhere as $x => $w) {
-                $where_str .= $this->parseClause($w, $x);
+            $this->_logger->debug("Parsing where clause and adding to query");
+            foreach ($where as $x => $w) {
+                if($x > 0) {
+                    $where_str .= " {$w->sqlOperator}";
+                }
+                $where_str .= $w;
             }
             if (strlen($where_str) > strlen(" WHERE")) {
                 $this->_sql .= $where_str;
@@ -914,13 +868,6 @@ class Database
             } else {
                 $this->_sql .= "(" . implode("),(", array_map([$this, '_escape'], array_values($params))) . ")";
             }
-        } elseif (is_object($params)) {
-            $interfaces = \class_implements($params);
-            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($params) . "::extendedInsert")) {
-                $this->_sql .= " VALUES " . \call_user_func([$params, "extendedInsert"]);
-            } else {
-                throw new Exception("Params passed are an object that do not implement DBInterface");
-            }
         } else {
             throw new Exception("Invalid param type");
         }
@@ -998,10 +945,16 @@ class Database
             throw new Exception("No fields to update");
         }
 
-        if (! is_null($arrWhere) && is_array($arrWhere) && count($arrWhere)) {
+        $where = $this->parseClause($arrWhere);
+        
+        if (! is_null($where) && is_array($where) && count($where)) {
             $where_str = " WHERE";
-            foreach ($arrWhere as $x => $w) {
-                $where_str .= $this->parseClause($w, $x);
+            $this->_logger->debug("Parsing where clause and adding to query");
+            foreach ($where as $x => $w) {
+                if($x > 0) {
+                    $where_str .= " {$w->sqlOperator}";
+                }
+                $where_str .= $w;
             }
             if (strlen($where_str) > strlen(" WHERE")) {
                 $this->_sql .= $where_str;
@@ -1200,10 +1153,16 @@ class Database
             $this->_sql .= " " . implode(" ", $arrJoins);
         }
 
-        if (! is_null($arrWhere) && is_array($arrWhere) && count($arrWhere)) {
+        $where = $this->parseClause($arrWhere);
+
+        if (! is_null($where) && is_array($where) && count($where)) {
             $where_str = " WHERE";
-            foreach ($arrWhere as $x => $w) {
-                $where_str .= $this->parseClause($w, $x);
+            $this->_logger->debug("Parsing where clause and adding to query");
+            foreach ($where as $x => $w) {
+                if($x > 0) {
+                    $where_str .= " {$w->sqlOperator}";
+                }
+                $where_str .= $w;
             }
             if (strlen($where_str) > strlen(" WHERE")) {
                 $this->_sql .= $where_str;
@@ -1655,15 +1614,14 @@ class Database
      *
      * @return string Escaped value
      */
-    protected function _escape($val, $blnEscape = true)
+    public function _escape($val, $blnEscape = true)
     {
         if (is_null($val) || (is_string($val) && strtolower($val) == 'null')) {
             return 'NULL';
         } elseif (is_numeric($val) || is_string($val)) {
             if (stripos($val, "IF(") !== false) {
                 return $val;
-            }
-            elseif ($blnEscape) {
+            } elseif ($blnEscape) {
                 return "'{$this->_c->real_escape_string($val)}'";
             }
             return $val;
@@ -1671,7 +1629,13 @@ class Database
             return "'{$val->format(MYSQL_DATETIME)}'";
         } elseif (is_bool($val)) {
             return $val ? "'1'" : "'0'";
-        } elseif (gettype($val) == 'object' && method_exists($val, '_escape')) {
+        } elseif (is_array($val)) {
+            $ret = [];
+            foreach($val as $v) {
+                $ret[] = $this->_escape($v);
+            }
+            return "(" . implode(",", $ret) . ")";
+        } elseif (is_object($val) && method_exists($val, '_escape')) {
             $ret = call_user_func([
                 $val,
                 '_escape'
@@ -1681,9 +1645,6 @@ class Database
             } else {
                 throw new Exception("Error in return from _escape method in " . get_class($val), E_ERROR);
             }
-        } elseif (gettype($val) == 'object') {
-            $this->_logger->error("Unknown object to escape " . get_class($val) . " in SQL string {$this->_sql}");
-            return;
         }
 
         throw new Exception("Unknown datatype to escape in SQL string {$this->_sql} " . gettype($val), E_ERROR);
@@ -1876,92 +1837,29 @@ class Database
     }
 
     /**
-     * Function to parse where and having clauses
-     *
-     * @param array $arrClause
-     * @param int $intIndex
+     * Method to add a where clause
+     * 
+     * @param DBWhere|array:DBWhere $where
+     * 
+     * @return boolean|array:DBWhere
      */
-    protected function parseClause($arrClause, $intIndex)
+    public function parseClause($where) 
     {
-        $ret = null;
-
-        $this->_logger->debug("Parsing clause", $arrClause);
-
-        if (! isset($arrClause['field']) && isset($arrClause['close-paren']) && $arrClause['close-paren']) {
-            $ret .= ")";
-            return $ret;
-        } elseif ($intIndex > 0 && ! isset($arrClause['sql_op'])) {
-            $this->_logger->warning("Missing sql_op field to identify how current and previous WHERE clause statements should be linked ('AND', 'OR', 'XOR', etc), skipped", [
-                'clause' => implode(",", $arrClause)
-            ]);
-            return;
-        }
-
-        $op = '=';
-        if (isset($arrClause['op'])) {
-            $op = $arrClause['op'];
-        }
-
-        switch ($op) {
-            case self::BETWEEN:
-                if (! isset($arrClause['field']) || ! isset($arrClause['low']) || ! isset($arrClause['high'])) {
-                    $this->_logger->warning("Missing field, low, or high for BETWEEN where clause, skipping");
-                    return;
+        $ret = [];
+        if(is_array($where)) {
+            foreach($where as $k => $w) {
+                if(!is_a($w, 'Godsgood33\Php_Db\DBWhere')) {
+                    return false;
                 }
-                break;
-            default:
-                if (! isset($arrClause['field']) || ! isset($arrClause['value'])) {
-                    $this->_logger->warning("Missing field or value for WHERE clause, skipping", $arrClause);
-                    return;
-                }
-        }
+                $v = $this->_escape($w->value);
+                $where[$k]->value = $v;
 
-        if ($intIndex > 0) {
-            $ret .= " {$arrClause['sql_op']}";
-        }
-
-        if (isset($arrClause['open-paren']) && $arrClause['open-paren']) {
-            $ret .= " (";
-        }
-
-        if (isset($arrClause['backticks']) && ! $arrClause['backticks']) {
-            $field = $arrClause['field'];
-        } else {
-            $field = "`{$arrClause['field']}`";
-        }
-
-        if ($op == self::IN || $op == self::NOT_IN) {
-            if (is_string($arrClause['value'])) {
-                $ret .= " {$field} {$op} " . (strpos($arrClause['value'], '(') !== false ? $arrClause['value'] : "({$arrClause['value']})");
-            } elseif (is_array($arrClause['value'])) {
-                $ret .= " {$field} {$op} (" . implode(",", array_map([
-                    $this,
-                    '_escape'
-                ], $arrClause['value'])) . ")";
-            } else {
-                $this->_logger->error("Invalid datatype for IN WHERE clause, only string and array allowed " . gettype($arrClause['value']), $arrClause);
-                throw new Exception("Invalid datatype for IN WHERE clause", E_ERROR);
+                $ret[] = $where[$k];
             }
-        } elseif ($op == self::BETWEEN) {
-            $ret .= " {$field} BETWEEN {$this->_escape($arrClause['low'])} AND {$this->_escape($arrClause['high'])}";
-        } else {
-            if (isset($arrClause['escape']) && ! $arrClause['escape']) {
-                $value = $arrClause['value'];
-            } else {
-                $value = $this->_escape($arrClause['value']);
-            }
-
-            if (isset($arrClause['case_insensitive']) && $arrClause['case_insensitive']) {
-                $ret .= " LOWER({$field}) {$op} LOWER({$this->_escape($arrClause['value'])})";
-            } elseif (is_string($arrClause['value']) && preg_match("/\(SELECT/", $arrClause['value'])) {
-                $ret .= " {$field} {$op} {$arrClause['value']}";
-            } else {
-                $ret .= " {$field} {$op} {$value}";
-            }
-        }
-
-        if (isset($arrClause['close-paren']) && $arrClause['close-paren']) {
-            $ret .= ")";
+        } elseif(is_a($where, 'Godsgood33\Php_Db\DBWhere')) {
+            $v = $this->_escape($where->value);
+            $where->value = $v;
+            $ret[] = $where;
         }
 
         return $ret;
