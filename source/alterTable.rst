@@ -1,0 +1,11 @@
+alterTable
+==========
+
+Purpose:
+--------
+
+Definition:
+-----------
+
+Examples:
+---------

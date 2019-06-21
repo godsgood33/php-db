@@ -653,7 +653,6 @@ class Database
      *            [optional]
      *            Optional 2-dimensional array to allow other flags
      *
-     * @see Database::where()
      * @see Database::flags()
      *
      * @throws Exception
@@ -724,7 +723,6 @@ class Database
      *            [optional]
      *            Optional 2-dimensional array to add flags
      *
-     * @see Database::where()
      * @see Database::flags()
      *
      * @return string|NULL
@@ -893,7 +891,6 @@ class Database
      *            [optional]
      *            Two-dimensional array to create other flag options (joins, order, and group)
      *
-     * @see Database::where()
      * @see Database::flags()
      *
      * @return NULL|string
@@ -1127,7 +1124,6 @@ class Database
      *            [optional]
      *            Optional 2-dimensional array to add other flags
      *
-     * @see Database::where()
      * @see Database::flags()
      *
      * @return string|NULL
@@ -1624,7 +1620,7 @@ class Database
             } elseif ($blnEscape) {
                 return "'{$this->_c->real_escape_string($val)}'";
             }
-            return $val;
+            return "'{$val}'";
         } elseif (is_a($val, 'DateTime')) {
             return "'{$val->format(MYSQL_DATETIME)}'";
         } elseif (is_bool($val)) {
@@ -1851,13 +1847,13 @@ class Database
                 if(!is_a($w, 'Godsgood33\Php_Db\DBWhere')) {
                     return false;
                 }
-                $v = $this->_escape($w->value);
+                $v = $this->_escape($w->value, $w->escape);
                 $where[$k]->value = $v;
 
                 $ret[] = $where[$k];
             }
         } elseif(is_a($where, 'Godsgood33\Php_Db\DBWhere')) {
-            $v = $this->_escape($where->value);
+            $v = $this->_escape($where->value, $where->escape);
             $where->value = $v;
             $ret[] = $where;
         }

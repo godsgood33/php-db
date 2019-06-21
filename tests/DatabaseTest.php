@@ -294,7 +294,7 @@ final class DatabaseTest extends TestCase
 
     public function testSelectCountWithArrayWhereParameter()
     {
-        $where = new DBWhere('name', $this->db->_escape('Ed'));
+        $where = new DBWhere('name', 'Ed');
         $this->db->selectCount("test", [$where], [
             'joins' => [
                 "JOIN settings s ON s.id = test.id"
