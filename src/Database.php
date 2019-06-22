@@ -1842,6 +1842,10 @@ class Database
     public function parseClause($where) 
     {
         $ret = [];
+        $interfaces = [];
+        if(is_object($where)) {
+            $interfaces = \class_implements($where);
+        }
         if(is_array($where)) {
             foreach($where as $k => $w) {
                 if(!is_a($w, 'Godsgood33\Php_Db\DBWhere')) {
@@ -1856,6 +1860,17 @@ class Database
             $v = $this->_escape($where->value, $where->escape);
             $where->value = $v;
             $ret[] = $where;
+        } elseif(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($where) . "::where")) {
+            $params = \call_user_func([$where, "where"]);
+            if(!is_a($params, 'Godsgood33\Php_Db\DBWhere')) {
+                $this->_logger->warning("DBWhere object NOT returned from " . get_class($where) . " object");
+                return $ret;
+            }
+            $v = $this->_escape($params->value, $params->escape);
+            $params->value = $v;
+            $ret[] = $params;
+        } else {
+            $this->_logger->warning("Failed to get where from", [$where]);
         }
 
         return $ret;

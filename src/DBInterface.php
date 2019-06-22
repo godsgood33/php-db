@@ -22,7 +22,7 @@ interface DBInterface
      *          'phone' => '1234567890'
      *      ]
      */
-    public function insert();
+    public function insert() : array;
 
     /**
      * Required update method to return an update statement for the class
@@ -34,7 +34,7 @@ interface DBInterface
      * @example
      *      "id='1',name='name',phone='phone'"
      */
-    public function update();
+    public function update() : string;
 
     /**
      * Required replace method to return a replace statement for the class
@@ -49,6 +49,13 @@ interface DBInterface
      *          'phone' => '9876543210'
      *      ]
      */
-    public function replace();
-    
+    public function replace() : array;
+
+    /**
+     * Required where method to return a DBWhere object for the class
+     * 
+     * @return DBWhere
+     */
+    public function where() : DBWhere;
+
 }

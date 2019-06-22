@@ -789,7 +789,7 @@ final class DatabaseTest extends TestCase
     {
         $ob = new \TestClass2();
         $where = new DBWhere('test', $ob);
-        $ret = $this->db->select('test', null, $where);
+        $this->db->select('test', null, $where);
     }
 
     /**
@@ -800,5 +800,12 @@ final class DatabaseTest extends TestCase
         $ob = new \TestClass4();
         $where = new DBWhere('test', $ob);
         $this->db->select('test', null, $where);
+    }
+
+    public function testClassWhere()
+    {
+        $ob = new \TestClass3();
+        $this->db->select('test', null, $ob);
+        $this->assertEquals("SELECT * FROM test WHERE `foo` = 'bar'", $this->db->getSql());
     }
 }
