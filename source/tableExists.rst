@@ -1,5 +1,5 @@
-tableExists
-===========
+Table Exists
+============
 
 Purpose:
 --------
@@ -18,14 +18,12 @@ Definition:
 Examples:
 ---------
 
-``$this->tableExists('db', 'members');``
-
-``// returns 1``
+    | $this->tableExists('db', 'members');
+    | // returns 1
 
 You can also use wildcards to find out how many table that match the wildcard
 exist
 
-``$this->tableExists('db', 'mem%');``
-
-``// also retuns 1 in our example, but could return more if something else
-matches the query``
+    | $this->tableExists('db', 'mem%');
+    | // also retuns 1 in our example, but could return more if something else
+    | matches the query

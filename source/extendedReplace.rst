@@ -1,5 +1,5 @@
-extendedReplace
-===============
+Extended Replace
+================
 
 Purpose:
 --------
@@ -19,10 +19,9 @@ Definition:
 Examples:
 ---------
 
-``$this->extendedReplace("members",
-['id', 'name', 'salary'], [
-[1, 'George Foreman', 100], [2, 'Curious George', 1000]
-]);``
-
-``// REPLACE INTO members (`id`,`name`,`salary`) VALUES
-(1, 'George Foreman', 100), (2, 'Curious George', 1000)``
+    | $this->extendedReplace("members",
+    | ['id', 'name', 'salary'], [
+    | [1, 'George Foreman', 100], [2, 'Curious George', 1000]
+    | ]);
+    | // REPLACE INTO members (`id`,`name`,`salary`) VALUES
+    | (1, 'George Foreman', 100), (2, 'Curious George', 1000)

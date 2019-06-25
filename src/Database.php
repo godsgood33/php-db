@@ -470,48 +470,16 @@ class Database
         }
 
         $this->_result = false;
-        $query = 'SELECT';
-        switch ($this->_queryType) {
-            case self::SELECT_COUNT:
-                $query = 'SELECT COUNT';
-                break;
-            case self::INSERT:
-            case self::EXTENDED_INSERT:
-                $query = 'INSERT';
-                break;
-            case self::UPDATE:
-            case self::EXTENDED_UPDATE:
-                $query = 'UPDATE';
-                break;
-            case self::REPLACE:
-            case self::EXTENDED_REPLACE:
-                $query = 'REPLACE';
-                break;
-            case self::DROP:
-                $query = 'DROP';
-                break;
-            case self::DELETE:
-                $query = 'DELETE';
-                break;
-            case self::CREATE_TABLE:
-                $query = 'CREATE TABLE';
-                break;
-            case self::TRUNCATE:
-                $query = 'TRUNCATE';
-                break;
-        }
 
         if (is_a($this->_c, 'mysqli')) {
             if (! $this->_c->ping()) {
-                require_once 'DBConfig.php';
-                $this->_c = null;
-                $this->_c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA);
+                throw new Exception("Database lost connection", E_ERROR);
             }
         } else {
             throw new Exception('Database was not connected', E_ERROR);
         }
 
-        $this->_logger->info("Executing {$query} query");
+        $this->_logger->info("Executing {$this->_queryType} query");
         $this->_logger->debug($this->_sql);
 
         try {
@@ -934,7 +902,15 @@ class Database
         } elseif (is_object($arrParams)) {
             $interfaces = \class_implements($arrParams);
             if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::update")) {
-                $this->_sql .= \call_user_func([$arrParams, "update"]);
+                $params = \call_user_func([$arrParams, "update"]);
+                $fields = array_keys($params);
+                $values = array_map([$this, '_escape'], array_values($params));
+                foreach($fields as $x => $f) {
+                    $this->_sql .= "`{$f}`={$values[$x]}";
+                    if($x > 0) {
+                        $this->_sql .= ",";
+                    }
+                }
             } else {
                 throw new Exception("Params is an object that doesn't implement DBInterface");
             }
@@ -1735,10 +1711,14 @@ class Database
 
         if (isset($arrFlags['having']) && is_array($arrFlags['having'])) {
             $having = " HAVING";
+            $this->_logger->debug("Parsing where clause and adding to query");
             foreach ($arrFlags['having'] as $x => $h) {
-                $having .= $this->parseClause($h, $x);
+                if($x > 0) {
+                    $having .= " {$h->sqlOperator}";
+                }
+                $having .= $h;
             }
-            if (strlen($having) > strlen(" HAVING")) {
+            if(strlen($having) > strlen(" HAVING")) {
                 $ret .= $having;
             }
         }
@@ -1862,13 +1842,7 @@ class Database
             $ret[] = $where;
         } elseif(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($where) . "::where")) {
             $params = \call_user_func([$where, "where"]);
-            if(!is_a($params, 'Godsgood33\Php_Db\DBWhere')) {
-                $this->_logger->warning("DBWhere object NOT returned from " . get_class($where) . " object");
-                return $ret;
-            }
-            $v = $this->_escape($params->value, $params->escape);
-            $params->value = $v;
-            $ret[] = $params;
+            $ret = $this->parseClause($params);
         } else {
             $this->_logger->warning("Failed to get where from", [$where]);
         }

@@ -32,9 +32,13 @@ interface DBInterface
      *      Must be properly escaped, encoded, and/or encrypted
      * 
      * @example
-     *      "id='1',name='name',phone='phone'"
+     *      [
+     *          id => '1',
+     *          name => 'name',
+     *          phone => 'phone'
+     *      ]
      */
-    public function update() : string;
+    public function update() : array;
 
     /**
      * Required replace method to return a replace statement for the class
@@ -54,8 +58,8 @@ interface DBInterface
     /**
      * Required where method to return a DBWhere object for the class
      * 
-     * @return DBWhere
+     * @return DBWhere|array:DBWhere
      */
-    public function where() : DBWhere;
+    public function where();
 
 }

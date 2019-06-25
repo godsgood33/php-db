@@ -1,20 +1,25 @@
-drop
+Drop
 ====
 
 Purpose:
 --------
-The drop method will create a drop query to drop a table or view
-from the database.  This will also add a IF EXISTS clause.
+The drop method will create a drop query to drop a table or view from the
+database.  This will also add a IF EXISTS clause.
 
-Use:
-To delete a table:
+Definition:
+-----------
 
-``$this->drop("members");``
+``$this->drop($strTableName);``
 
-``// DROP TABLE IF EXISTS members``
+* strTableName - (string) The table to truncate
+
+Examples:
+---------
+
+    | $this->drop('members');
+    | // DROP TABLE IF EXISTS members
 
 To delete a view
 
-``$this->drop("members", "view");``
-
-``// DROP VIEW IF EXISTS members``
+    | $this->drop("active_members", "view");
+    | // DROP VIEW IF EXISTS active_members

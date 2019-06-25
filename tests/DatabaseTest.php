@@ -163,6 +163,68 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("SELECT * FROM test WHERE `name` = 'Frank' AND `state` = 'IN'", $this->db->getSql());
     }
 
+    public function testSelectWithGroupByFlag()
+    {
+        $this->db->select('test', null, [], [
+            'group' => 'state'
+        ]);
+        $this->assertEquals("SELECT * FROM test GROUP BY state", $this->db->getSql());
+    }
+
+    public function testSelectWithGroupByArrayFlag()
+    {
+        $this->db->select("test", null, [], [
+            'group' => ['lname', 'state']
+        ]);
+        $this->assertEquals("SELECT * FROM test GROUP BY lname, state", $this->db->getSql());
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testSelectWithGroupByObject()
+    {
+        $this->db->select("test", null, [], [
+            'group' => new stdClass()
+        ]);
+    }
+
+    public function testSelectWithOrderByFlag()
+    {
+        $this->db->select("test", null, [], [
+            'order' => 'lname'
+        ]);
+        $this->assertEquals("SELECT * FROM test ORDER BY lname", $this->db->getSql());
+    }
+
+    public function testSelectWithOrderByArrayFlag()
+    {
+        $this->db->select('test', null, [], [
+            'order' => [['field' => 'lname', 'sort' => 'ASC'], ['field' => 'state', 'sort' => 'DESC']]
+        ]);
+        $this->assertEquals("SELECT * FROM test ORDER BY lname ASC, state DESC", $this->db->getSql());
+    }
+
+    public function testSelectWithHavingFlag()
+    {
+        $where1 = new DBWhere('foo', 10);
+        $where2 = new DBWhere('bar', 100, '>=');
+        $where2->sqlOperator = 'OR';
+        $this->db->select('test', null, [], [
+            'having' => [$where1, $where2]
+        ]);
+        $this->assertEquals("SELECT * FROM test HAVING `foo` = 10 OR `bar` >= 100", $this->db->getSql());
+    }
+
+    public function testSelectWithLimitAndStartFlag()
+    {
+        $this->db->select("test", null, [], [
+            'limit' => 10,
+            'start' => 5
+        ]);
+        $this->assertEquals("SELECT * FROM test LIMIT 5,10", $this->db->getSql());
+    }
+
     public function testCreateTemporaryTable()
     {
         $this->db->select("test");
@@ -469,6 +531,20 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("UPDATE test SET `name`='Frank' WHERE `id` = '1'", $this->db->getSql());
     }
 
+    public function testUpdateWithMultipleWhereObjects()
+    {
+        $where1 = new DBWhere('fname', 'Fred');
+        $where2 = new DBWhere('lname', 'Flintstone');
+        $this->db->update('test', ['phone' => 1], [$where1, $where2]);
+        $this->assertEquals("UPDATE test SET `phone`='1' WHERE `fname` = 'Fred' AND `lname` = 'Flintstone'", $this->db->getSql());
+    }
+
+    public function testUpdateWithNullValue()
+    {
+        $this->db->update('test', ['phone' => null, 'email' => null], new DBWhere('id', 1));
+        $this->assertEquals("UPDATE test SET `phone`=NULL,`email`=NULL WHERE `id` = '1'", $this->db->getSql());
+    }
+
     public function testUpdateWithOneElementAndJoinClause()
     {
         $this->db->update('test t', [
@@ -481,14 +557,12 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("UPDATE test t JOIN settings s ON s.id=t.id SET t.name='Frank'", $this->db->getSql());
     }
 
-    public function testUpdateWithOneElementAndLimitClause()
+    public function testUpdateWithOneElement()
     {
         $this->db->update('test', [
             'name' => 'Frank'
-        ], [], [
-            'limit' => 1
         ]);
-        $this->assertEquals("UPDATE test SET `name`='Frank' LIMIT 1", $this->db->getSql());
+        $this->assertEquals("UPDATE test SET `name`='Frank'", $this->db->getSql());
     }
 
     /**
@@ -558,6 +632,13 @@ final class DatabaseTest extends TestCase
     public function testReplaceInvalidTableNameDatatype()
     {
         $this->db->replace(new stdClass(), []);
+    }
+
+    public function testReplaceInterfaceClass()
+    {
+        $ob = new \TestClass3();
+        $this->db->replace('test', $ob);
+        $this->assertEquals("REPLACE INTO test (`id`,`meta_key`,`meta_value`) VALUES ('3','test3','test25')", $this->db->getSql());
     }
 
     public function testEReplace()
@@ -731,6 +812,13 @@ final class DatabaseTest extends TestCase
         $this->db->setSchema("test");
         $row = $this->db->query("SELECT DATABASE()");
         $this->assertEquals("test", $row->fetch_array()[0]);
+    }
+
+    public function testQuery()
+    {
+        $this->db->select("test");
+        $ret = $this->db->query();
+        $this->assertInstanceOf('mysqli_result', $ret);
     }
 
     /**

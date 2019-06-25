@@ -10,9 +10,11 @@ class TestClass3 implements Godsgood33\Php_Db\DBInterface
         ];
     }
 
-    public function update() : string
+    public function update() : array
     {
-        return "`meta_value`='george'";
+        return [
+            'meta_value' => 'george'
+        ];
     }
 
     public function replace() : array
@@ -24,7 +26,7 @@ class TestClass3 implements Godsgood33\Php_Db\DBInterface
         ];
     }
 
-    public function where() : Godsgood33\Php_Db\DBWhere
+    public function where()
     {
         $where = new Godsgood33\Php_Db\DBWhere('foo', 'bar');
         return $where;

@@ -1,5 +1,5 @@
-alterTable
-==========
+Alter Table
+===========
 
 Purpose:
 --------

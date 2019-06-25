@@ -1,4 +1,4 @@
-dbwhere
+DBWhere
 =======
 
 Purpose:
@@ -58,18 +58,15 @@ Examples:
 ---------
 
 1)
-``$where = new DBWhere('name', 'Fred Flintstone');
-// WHERE `name` = 'Fred Flintstone'``
+    $where = new DBWhere('name', 'Fred Flintstone');
+    // WHERE `name` = 'Fred Flintstone'
 
 2)
-``$where = new DBWhere('phone', null, DBWhere::IS);
-// WHERE `phone` IS NULL``
+    $where = new DBWhere('phone', null, DBWhere::IS);
+    // WHERE `phone` IS NULL
 
 3)
-``$where = new DBWhere('age', null, DBWhere::BETWEEN);``
-
-``$where->low = 20;``
-
-``$where->high = 30;``
-
-``// WHERE `age` BETWEEN 20 AND 30``
+    | $where = new DBWhere('age', null, DBWhere::BETWEEN);
+    | $where->low = 20;
+    | $where->high = 30;
+    | // WHERE `age` BETWEEN 20 AND 30

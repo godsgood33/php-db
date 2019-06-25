@@ -1,4 +1,4 @@
-replace
+Replace
 =======
 
 Purpose:
@@ -21,8 +21,7 @@ Examples:
 The replace method is very similar to the insert method except for no ignore
 boolean.
 
-``$this->replace("member",
-['id' => 1, 'name' => 'George Foreman', 'salary' => 1]);``
-
-``// REPLACE INTO member (`id`, `name`, `salary`) VALUES
-(1, 'George Foreman', 1)``
+    | $this->replace("member",
+    | ['id' => 1, 'name' => 'George Foreman', 'salary' => 1]);
+    | // REPLACE INTO member (`id`, `name`, `salary`) VALUES
+    | (1, 'George Foreman', 1)

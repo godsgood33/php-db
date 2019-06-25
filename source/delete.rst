@@ -1,4 +1,4 @@
-delete
+Delete
 ======
 
 Purpose:
@@ -24,15 +24,13 @@ Examples:
 
 This will delete the row from the members table where the id = 1
 
-``$this->delete("members", [['field' => 'id', 'value' => 1]]);``
-
-``// DELETE FROM members WHERE id = 1``
+    | $this->delete("members", [['field' => 'id', 'value' => 1]]);
+    | // DELETE FROM members WHERE id = 1
 
 You can also use join commands to delete rows from one table that are
 dependent upon another table
 
-``$this->delete("members m", ['m.*'], [], [
-'joins' => ["JOIN department d ON d.member_id = m.id]
-]);``
-
-``// DELETE m.* FROM members m JOIN department d ON d.member_id = m.id``
+    | $this->delete("members m", ['m.*'], [], [
+    | 'joins' => ["JOIN department d ON d.member_id = m.id]
+    | ]);
+    | // DELETE m.* FROM members m JOIN department d ON d.member_id = m.id

@@ -5,7 +5,9 @@ Php-Db's documentation!
    :maxdepth: 1
    :caption: Contents:
 
+   setup
    DBWhere
+   DBInterface
    select
    selectCount
    insert
@@ -20,10 +22,8 @@ Php-Db's documentation!
    createTable
    alterTable
    tableExists
-   fieldExists
 
    constants
-   helper
 
    license
 

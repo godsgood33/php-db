@@ -1,5 +1,5 @@
-extendedUpdate
-==============
+Extended Update
+===============
 
 Purpose:
 --------
@@ -53,11 +53,10 @@ The tmp_members_to_update table
  1    Horace    10
 ==== ======== ========
 
-``$this->extendedUpdate("members", "tmp_members_to_update", "id",
-['name', 'salary']);``
-
-``// UPDATE members tbu INNER JOIN tmp_members_to_update o USING (id)
-SET tbu.name = o.name, tbu.salary = o.salary``
+    | $this->extendedUpdate("members", "tmp_members_to_update", "id",
+    | ['name', 'salary']);
+    | // UPDATE members tbu INNER JOIN tmp_members_to_update o USING (id)
+    | SET tbu.name = o.name, tbu.salary = o.salary
 
 The members table would look like this after running the command
 
@@ -86,10 +85,9 @@ The tmp_members_to_update table
  1    Horace    10
 ==== ======== ========
 
-``$this->extendedUpdate("membes", "tmp_members_to_update", "id", "name");``
-
-``// UPDATE members tbu INNER JOIN tmp_members_to_update o USING (id)
-SET tbu.name = o.name``
+    | $this->extendedUpdate("membes", "tmp_members_to_update", "id", "name");
+    | // UPDATE members tbu INNER JOIN tmp_members_to_update o USING (id)
+    | SET tbu.name = o.name
 
 ==== ======== ========
  id   name     salary
