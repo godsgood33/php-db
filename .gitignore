@@ -2,4 +2,4 @@
 /vendor/
 /coverage/
 composer.lock
-/source/_build/
+/docs/_build/

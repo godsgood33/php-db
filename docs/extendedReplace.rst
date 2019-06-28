@@ -16,6 +16,12 @@ Definition:
 * arrFields - (array) Array of fields
 * arrParams - (array) 2-dimensional array of values
 
+Returns:
+--------
+``Integer``
+
+Returns the number of affected rows
+
 Examples:
 ---------
 

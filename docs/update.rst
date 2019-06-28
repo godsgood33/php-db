@@ -17,6 +17,12 @@ Definition:
 * arrFlags - (array) Two-dimensional array to create other flag options
     (joins, order, and group)
 
+Returns:
+--------
+``Integer``
+
+Returns the number of affected rows
+
 Examples:
 ---------
 

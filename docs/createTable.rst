@@ -26,6 +26,12 @@ Definition:
 'option' => '{optional values, e.g. AUTO_INCREMENT, PRIMARY KEY, UNIQUE, etc)}'
 ]``
 
+Returns:
+--------
+``mysqli_result``
+
+Returns a ``mysqli_result`` object
+
 Examples:
 ---------
 
@@ -47,5 +53,17 @@ Definition:
 
 * json - (object) a JSON object storing the definition of the table
 
+Returns:
+--------
+``Void``
+
 Examples:
 ---------
+There are example formats in the /examples directory, but to pass it to the
+method use something similar to the following:
+
+    | $txt = file_get_contents('/examples/create_table_json.json');
+    | $json = json_decode($txt);
+    | foreach($json->tables as $t) {
+    |     $this->createTableJson($t);
+    | }

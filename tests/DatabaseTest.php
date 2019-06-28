@@ -75,6 +75,12 @@ final class DatabaseTest extends TestCase
         $this->assertEquals(Logger::DEBUG, $this->db->getLogLevel());
     }
 
+    public function testSetLogger()
+    {
+        $l = new Monolog\Logger('test');
+        $this->assertTrue($this->db->setLogger($l));
+    }
+
     /**
      * @expectedException Exception
      */
@@ -304,19 +310,40 @@ final class DatabaseTest extends TestCase
         $this->assertFalse($tbl_not_present);
     }
 
-    public function testAlterTableAddColumn()
+    public function testAlterTableAddColumnNotNullDefault()
     {
         $new = new stdClass();
         $new->name = 'newCol';
         $new->dataType = 'tinyint(1)';
         $new->nn = false;
-        $new->default = null;
+        $new->default = '1';
 
-        $this->db->alterTable('test', Database::ADD_COLUMN, $new);
-        $this->assertEquals("ALTER TABLE test ADD COLUMN `newCol` tinyint(1) DEFAULT NULL", $this->db->getSql());
+        $this->db->addColumn('test', $new);
+        $this->assertEquals("ALTER TABLE test ADD COLUMN `newCol` tinyint(1) DEFAULT '1'", $this->db->getSql());
     }
 
-    public function testAlterTableModifyColumn()
+    public function testAlterTableAddColumnNullDefault()
+    {
+        $new = new stdClass();
+        $new->name = 'newCol';
+        $new->dataType = 'varchar(50)';
+        $new->nn = true;
+        $new->default = null;
+
+        $this->db->addColumn('test', $new);
+        $this->assertEquals("ALTER TABLE test ADD COLUMN `newCol` varchar(50) NOT NULL DEFAULT NULL", $this->db->getSql());
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testAlterTableAddColumnMissingRequiredFields()
+    {
+        $new = new stdClass();
+        $this->db->addColumn('test', $new);
+    }
+
+    public function testAlterTableModifyColumnNotNullDefault()
     {
         $mod = new stdClass();
         $mod->name = 'default';
@@ -325,8 +352,29 @@ final class DatabaseTest extends TestCase
         $mod->nn = true;
         $mod->default = 1;
 
-        $this->db->alterTable("test", Database::MODIFY_COLUMN, $mod);
+        $this->db->modifyColumn("test", $mod);
         $this->assertEquals("ALTER TABLE test MODIFY COLUMN `default` `default2` int(1) NOT NULL DEFAULT '1'", $this->db->getSql());
+    }
+
+    public function testAlterTableModifyColumnNullDefault()
+    {
+        $mod = new stdClass();
+        $mod->name = 'default';
+        $mod->dataType = 'int(2)';
+        $mod->nn = false;
+        $mod->default = null;
+
+        $this->db->modifyColumn('test', $mod);
+        $this->assertEquals("ALTER TABLE test MODIFY COLUMN `default` `default` int(2) DEFAULT NULL", $this->db->getSql());
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testAlterTableModifyColumnMissingRequiredParameters()
+    {
+        $mod = new stdClass();
+        $this->db->modifyColumn('test', $mod);
     }
 
     public function testAlterTableDropColumn()
@@ -334,16 +382,127 @@ final class DatabaseTest extends TestCase
         $drop = new stdClass();
         $drop->name = 'newCol';
 
-        $this->db->alterTable("test", Database::DROP_COLUMN, [
-            $drop
-        ]);
+        $this->db->dropColumn("test", [$drop]);
         $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol`", $this->db->getSql());
+    }
+
+    public function testAlterTableDropMultipleColumns()
+    {
+        $drop1 = new stdClass();
+        $drop1->name = 'newCol1';
+        $drop2 = new stdClass();
+        $drop2->name = 'newCol2';
+
+        $this->db->dropColumn('test', [$drop1, $drop2]);
+        $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol1`, `newCol2`", $this->db->getSql());
+    }
+
+    public function testAlterTableDropColumnString()
+    {
+        $this->db->dropColumn('test', 'newCol');
+        $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol`", $this->db->getSql());
+    }
+
+    public function testAlterTableAddConstraint()
+    {
+        $con = new stdClass();
+        $con->field = 'field';
+        $con->local = 'local_field';
+        $con->id = 'unique_id';
+        $con->schema = PHP_DB_SCHEMA;
+        $con->table = 'test';
+        $con->delete = 'CASCADE';
+        $con->update = 'NO ACTION';
+
+        $this->db->addConstraint('test', $con);
+        $this->assertEquals("ALTER TABLE test ADD CONSTRAINT `unique_id` FOREIGN KEY (`local_field`) REFERENCES `db`.`test` (`field`) ON DELETE CASCADE ON UPDATE NO ACTION", $this->db->getSql());
+    }
+
+    public function testAlterTableAddConstraintArrayFields()
+    {
+        $con = new stdClass();
+        $con->field = ['field1', 'field2'];
+        $con->local = ['local1', 'local2'];
+        $con->id = 'unique_id';
+        $con->schema = PHP_DB_SCHEMA;
+        $con->table = 'test';
+        $con->delete = 'CASCADE';
+        $con->update = 'NO ACTION';
+
+        $this->db->addConstraint('test', $con);
+        $this->assertEquals("ALTER TABLE test ADD CONSTRAINT `unique_id` FOREIGN KEY (`local1`,`local2`) REFERENCES `db`.`test` (`field1`,`field2`) ON DELETE CASCADE ON UPDATE NO ACTION", $this->db->getSql());
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testAlterTableAddConstraintInvalidType()
+    {
+        $tc = new TestClass();
+
+        $this->db->addConstraint('test', $tc);
     }
 
     public function testSelectCountWithNoParameters()
     {
         $this->db->selectCount("test");
         $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test", $this->db->getSql());
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testAddConstraintInvalidUpdateAction()
+    {
+        $field = json_decode(
+            '{
+                "id":"unique_id",
+                "local":"col1",
+                "schema":"schema",
+                "table":"table",
+                "field":"field1",
+                "delete":"CASCADE",
+                "update":"WHAT"
+            }'
+        );
+        $this->db->addConstraint('test', $field);
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testAddConstraintInvalidDeleteAction()
+    {
+        $field = json_decode(
+            '{
+                "id":"unique_id",
+                "local":"col1",
+                "schema":"schema",
+                "table":"table",
+                "field":"field1",
+                "delete":"WHAT",
+                "update":"CASCADE"
+            }'
+        );
+        $this->db->addConstraint('test', $field);
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testAddConstraintMissingElement()
+    {
+        $field = json_decode(
+            '{
+                "id":"unique_id",
+                "local":"col1",
+                "schema":"schema",
+                "table":"table",
+                "field":"field1",
+                "delete":"WHAT"
+            }'
+        );
+        $this->db->addConstraint('test', $field);
     }
 
     /**
@@ -363,6 +522,16 @@ final class DatabaseTest extends TestCase
             ]
         ]);
         $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test JOIN settings s ON s.id = test.id WHERE `name` = 'Ed'", $this->db->getSql());
+    }
+
+    public function testSelectCountWithMultipleWhereClauses()
+    {
+        $where1 = new DBWhere('name', '%george%', DBWhere::LIKE);
+        $where1->escape = false;
+        $where2 = new DBWhere('state', 'IN');
+
+        $this->db->selectCount('test', [$where1, $where2]);
+        $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test WHERE `name` LIKE '%george%' AND `state` = 'IN'", $this->db->getSql());
     }
 
     public function testInsertWithOneElementArrayParameter()
@@ -432,6 +601,14 @@ final class DatabaseTest extends TestCase
         $row = $this->db->execute();
 
         $this->assertTrue(is_object($row));
+    }
+
+    public function testSelectWithJoin()
+    {
+        $this->db->select("test t", null, [], [
+            'joins' => ["JOIN test2 t2 ON t2.id = t.fk"]
+        ]);
+        $this->assertEquals("SELECT * FROM test t JOIN test2 t2 ON t2.id = t.fk", $this->db->getSql());
     }
 
     /**
@@ -593,7 +770,7 @@ final class DatabaseTest extends TestCase
     {
         $tc = new TestClass3();
         $this->db->update("settings", $tc);
-        $this->assertEquals("UPDATE settings SET `meta_value`='george'", $this->db->getSql());
+        $this->assertEquals("UPDATE settings SET `field1`='george',`field2`='frank'", $this->db->getSql());
     }
 
     public function testEUpdateWithArrayList()
@@ -734,6 +911,16 @@ final class DatabaseTest extends TestCase
             'id'
         ], [$where]);
         $this->assertEquals("DELETE id FROM test WHERE `id` = '1'", $this->db->getSql());
+    }
+
+    public function testDeleteWithMultipleWhereClauses()
+    {
+        $where1 = new DBWhere('name', '%george%', DBWhere::LIKE);
+        $where1->escape = false;
+        $where2 = new DBWhere('state', 'IN');
+
+        $this->db->delete('test', null, [$where1, $where2]);
+        $this->assertEquals("DELETE FROM test WHERE `name` LIKE '%george%' AND `state` = 'IN'", $this->db->getSql());
     }
 
     public function testDeleteWithJoin()
@@ -895,5 +1082,18 @@ final class DatabaseTest extends TestCase
         $ob = new \TestClass3();
         $this->db->select('test', null, $ob);
         $this->assertEquals("SELECT * FROM test WHERE `foo` = 'bar'", $this->db->getSql());
+    }
+
+    public function testClassWhereError()
+    {
+        $ob = new \TestClass4();
+        $ret = $this->db->select('test', null, [$ob]);
+        $this->assertEquals("SELECT * FROM test", $ret);
+    }
+
+    public function testisJson()
+    {
+        $json = json_encode("{'test':'test'}");
+        $this->assertTrue($this->db->isJson($json));
     }
 }

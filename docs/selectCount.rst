@@ -14,6 +14,12 @@ Definition:
 * arrWhere - (DBWhere|array:DBWhere)
 * arrFlags - (array)
 
+Returns:
+--------
+``Number``
+
+Returns the number of affected or available rows
+
 Examples:
 ---------
 

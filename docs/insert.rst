@@ -21,6 +21,13 @@ Definition:
 * blnToIgnore - (boolean) used to decide if it needs to be a INSERT IGNORE
     statement
 
+Returns:
+--------
+``Integer``
+
+Returns the number of affected rows and sets the "insertID" of the first
+element
+
 Examples:
 ---------
 

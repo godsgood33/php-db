@@ -19,6 +19,12 @@ $arrFlags = []);``
 * arrWhere - (DBWhere|array:DBWhere)
 * arrFlags - (array)
 
+Returns:
+--------
+``stdClass`` | ``array:stdClass``
+
+If there is only one row, it will return just a single stdClass object
+
 Examples:
 ---------
 

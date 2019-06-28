@@ -13,7 +13,8 @@ class TestClass3 implements Godsgood33\Php_Db\DBInterface
     public function update() : array
     {
         return [
-            'meta_value' => 'george'
+            'field1' => 'george',
+            'field2' => 'frank'
         ];
     }
 

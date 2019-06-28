@@ -13,6 +13,12 @@ Definition:
 
 * strTableName - (string) The table to truncate
 
+Returns:
+--------
+``mysqli_result``
+
+Returns the ``mysqli_result`` object
+
 Examples:
 ---------
 

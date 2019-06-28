@@ -322,6 +322,7 @@ class Database
     {
         $this->_logger->debug("Setting logger");
         $this->_logger = $log;
+        return true;
     }
 
     /**
@@ -391,7 +392,7 @@ class Database
     /**
      * Function to return the currently selected database schema
      *
-     * @return string
+     * @return string|boolean
      */
     public function getSchema()
     {
@@ -401,6 +402,8 @@ class Database
             $this->_logger->debug("Getting schema {$row[0]}");
             return $row[0];
         }
+
+        return false;
     }
 
     /**
@@ -525,10 +528,10 @@ class Database
         if (in_array($this->_queryType, [Database::CREATE_TABLE, Database::ALTER_TABLE, Database::TRUNCATE, Database::DROP])) {
             $res = $this->_result;
         }
-        elseif (in_array($this->_queryType, [Database::INSERT, Database::EXTENDED_INSERT, Database::DELETE, Database::UPDATE, Database::EXTENDED_UPDATE, Database::REPLACE, Database::EXTENDED_REPLACE])) {
+        elseif (in_array($this->_queryType, [Database::INSERT, Database::EXTENDED_INSERT, Database::DELETE, Database::UPDATE, Database::EXTENDED_UPDATE, Database::REPLACE, Database::EXTENDED_REPLACE, Database::DELETE])) {
             $res = $this->_c->affected_rows;
 
-            if (in_array($this->_queryType, [Database::INSERT, Database::REPLACE])) {
+            if (in_array($this->_queryType, [Database::INSERT, Database::REPLACE, Database::EXTENDED_INSERT])) {
                 $this->_insertId = $this->_c->insert_id;
             }
         }
@@ -906,10 +909,10 @@ class Database
                 $fields = array_keys($params);
                 $values = array_map([$this, '_escape'], array_values($params));
                 foreach($fields as $x => $f) {
-                    $this->_sql .= "`{$f}`={$values[$x]}";
                     if($x > 0) {
                         $this->_sql .= ",";
                     }
+                    $this->_sql .= "`{$f}`={$values[$x]}";
                 }
             } else {
                 throw new Exception("Params is an object that doesn't implement DBInterface");
@@ -1345,64 +1348,152 @@ class Database
     }
 
     /**
-     * Function to alter a existing table
-     *
+     * Method to add a column to the database (only one at a time!)
+     * 
      * @param string $strTableName
-     *            Table to alter
-     * @param int $intAction
-     *            What action should be taken
-     * @param mixed $arrParams
-     *            For add column this is a stdClass object that has the same elements as the example json
-     *
-     * @return mixed
+     * @param stdClass $params
+     * 
+     * @return string|mixed
      */
-    public function alterTable($strTableName, $intAction, $arrParams)
+    public function addColumn($strTableName, $params)
     {
         $this->_queryType = self::ALTER_TABLE;
-        $this->_sql = "ALTER TABLE $strTableName";
-        if ($intAction == self::ADD_COLUMN) {
-            $nn = (isset($arrParams->nn) && $arrParams->nn ? " NOT NULL" : "");
-            $default = null;
-            if ($arrParams->default === null) {
-                $default = " DEFAULT NULL";
-            } elseif (strlen($arrParams->default)) {
-                $default = " DEFAULT {$this->_escape($arrParams->default)}";
-            }
-            $this->_sql .= " ADD COLUMN `{$arrParams->name}` {$arrParams->dataType}" . $nn . $default;
-        } elseif ($intAction == self::DROP_COLUMN) {
-            $this->_sql .= " DROP COLUMN ";
-            foreach ($arrParams as $col) {
-                $this->_sql .= "`{$col->name}`";
+        $this->_sql = "ALTER TABLE {$strTableName} ADD COLUMN";
 
-                if ($col != end($arrParams)) {
+        if(!self::checkObject($params, ['name', 'dataType'])) {
+            $this->_logger->error("Missing elements for the addColumn method (need 'name', 'dataType')", [$params]);
+            throw new \Exception("Missing elements for the addColumn method");
+        }
+
+        $nn = (isset($params->nn) && $params->nn ? " NOT NULL" : "");
+        $default = null;
+        if ($params->default === null) {
+            $default = " DEFAULT NULL";
+        } elseif (strlen($params->default)) {
+            $default = " DEFAULT {$this->_escape($params->default)}";
+        }
+        $this->_sql .= " `{$params->name}` {$params->dataType}" . $nn . $default;
+
+        if(self::$autorun) {
+            return $this->execute();
+        }
+
+        return $this->_sql;
+    }
+
+    /**
+     * Method to drop a fields from a table
+     * 
+     * @param string $strTableName
+     * @param string|array:string $params
+     * 
+     * @return string|mixed
+     */
+    public function dropColumn($strTableName, $params)
+    {
+        $this->_queryType = self::ALTER_TABLE;
+        $this->_sql = "ALTER TABLE {$strTableName} DROP COLUMN";
+
+        if(is_array($params) && count($params)) {
+            foreach ($params as $col) {
+                $this->_sql .= " `{$col->name}`";
+
+                if ($col != end($params)) {
                     $this->_sql .= ",";
                 }
             }
-        } elseif ($intAction == self::MODIFY_COLUMN) {
-            $this->_sql .= " MODIFY COLUMN";
-            $nn = (isset($arrParams->nn) && $arrParams->nn ? " NOT NULL" : "");
-            $default = null;
-            if ($arrParams->default === null) {
-                $default = " DEFAULT NULL";
-            } elseif (strlen($arrParams->default)) {
-                $default = " DEFAULT {$this->_escape($arrParams->default)}";
-            }
-            $this->_sql .= " `{$arrParams->name}` `{$arrParams->new_name}` {$arrParams->dataType}" . $nn . $default;
-        } elseif ($intAction == self::ADD_CONSTRAINT) {
-            if(is_array($arrParams->field) && is_array($arrParams->local)) {
-                $field = "`" . implode("`,`", $arrParams->field) . "`";
-                $local = "`" . implode("`,`", $arrParams->local) . "`";
-            } elseif(is_string($arrParams->field) && is_string($arrParams->local)) {
-                $field = "`{$arrParams->field}`";
-                $local = "`{$arrParams->local}`";
-            } else {
-                $this->_logger->critical("Error in reading constraint field");
-                throw new Exception("Error in reading constraint field");
-            }
-            $this->_sql .= " ADD CONSTRAINT `{$arrParams->id}` FOREIGN KEY ({$local}) REFERENCES `{$arrParams->schema}`.`{$arrParams->table}` ({$field}) ON DELETE {$arrParams->delete} ON UPDATE {$arrParams->update}";
+        } elseif(is_string($params)) {
+            $this->_sql .= " `{$params}`";
         }
 
-        if (self::$autorun) {
+        if(self::$autorun) {
+            return $this->execute();
+        }
+
+        return $this->_sql;
+    }
+
+    /**
+     * Method to modify a field to change it's datatype, name, or other parameter
+     * 
+     * @param string $strTableName
+     * @param stdClass $params
+     * 
+     * @return string|mixed
+     */
+    public function modifyColumn($strTableName, $params)
+    {
+        $this->_queryType = self::ALTER_TABLE;
+        $this->_sql = "ALTER TABLE {$strTableName} MODIFY COLUMN";
+
+        if(!self::checkObject($params, ['name', 'dataType'])) {
+            $this->_logger->error("Missing elements to the modifyColumn method (need 'name' and 'dataType')", [$params]);
+            throw new \Exception("Missing elements to the modifyColumn method");
+        }
+
+        if(!isset($params->new_name)) {
+            $params->new_name = $params->name;
+        }
+
+        $nn = (isset($params->nn) && $params->nn ? " NOT NULL" : "");
+        $default = null;
+        if ($params->default === null) {
+            $default = " DEFAULT NULL";
+        } elseif (strlen($params->default)) {
+            $default = " DEFAULT {$this->_escape($params->default)}";
+        }
+        $this->_sql .= " `{$params->name}` `{$params->new_name}` {$params->dataType}" . $nn . $default;
+
+        if(self::$autorun) {
+            return $this->execute();
+        }
+
+        return $this->_sql;
+    }
+
+    /**
+     * Method to add a constraint to a table
+     * 
+     * @param string $strTableName
+     * @param stdClass $params
+     * 
+     * @return string|mixed
+     */
+    public function addConstraint($strTableName, $params)
+    {
+        $this->_queryType = self::ALTER_TABLE;
+        $this->_sql = "ALTER TABLE {$strTableName} ADD CONSTRAINT";
+
+        if(!is_a($params, 'stdClass')) {
+            $this->_logger->critical("Error in reading constraint field");
+            throw new \Exception("Error in reading constraint field");
+        }
+
+        if(!self::checkObject($params, ['id', 'local', 'schema', 'table', 'field', 'delete', 'update'])) {
+            $this->_logger->error("Missing elements in the addConstraint method (need 'id', 'local', 'schema', 'table', 'field', 'delete', 'update')", [$params]);
+            throw new \Exception("There are some missing elements for the addConstraint action");
+        }
+
+        if(!in_array(strtoupper($params->delete), ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])) {
+            $this->_logger->error("Invalid action for deletion on addConstraint");
+            throw new \Exception("Invalid action for deletion on addConstraint");
+        }
+
+        if(!in_array(strtoupper($params->update), ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])) {
+            $this->_logger->error("Invalid action for update on addConstraint");
+            throw new Exception("Invalid action for update on addConstraint");
+        }
+
+        if(is_array($params->field) && is_array($params->local)) {
+            $field = "`" . implode("`,`", $params->field) . "`";
+            $local = "`" . implode("`,`", $params->local) . "`";
+        } elseif(is_string($params->field) && is_string($params->local)) {
+            $field = "`{$params->field}`";
+            $local = "`{$params->local}`";
+        }
+        $this->_sql .= " `{$params->id}` FOREIGN KEY ({$local}) REFERENCES `{$params->schema}`.`{$params->table}` ({$field}) ON DELETE {$params->delete} ON UPDATE {$params->update}";
+
+        if(self::$autorun) {
             return $this->execute();
         }
 
@@ -1902,5 +1993,25 @@ class Database
         list($encrypted_data, $iv) = explode('::', base64_decode($data), 2);
         $plaintext = openssl_decrypt($encrypted_data, PHP_DB_ENCRYPT_ALGORITHM, $encryption_key, 0, $iv);
         return $plaintext;
+    }
+
+    /**
+     * Method to check if all required fields are available in the object
+     * 
+     * @param object $object
+     * @param array:string $requiredFields
+     * 
+     * @return boolean
+     */
+    public static function checkObject($object, $requiredFields)
+    {
+        $haystack = array_keys(json_decode(json_encode($object), true));
+        foreach($requiredFields as $r) {
+            if(!in_array($r, $haystack)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

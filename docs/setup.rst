@@ -4,7 +4,7 @@ Setup
 Installation
 ------------
 
-``composer require godsgood33\\\php_db``
+``composer require godsgood33\php_db``
 
 Setup
 -----

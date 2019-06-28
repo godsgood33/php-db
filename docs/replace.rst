@@ -15,6 +15,13 @@ Definition:
 * strTableName - (string) The table to update
 * arrParams - (array) Name/value pair to insert
 
+Returns:
+--------
+``Integer``
+
+Returns the number of affected rows and sets the "insertID" of the first
+element
+
 Examples:
 ---------
 

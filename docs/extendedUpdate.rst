@@ -25,6 +25,12 @@ $strLinkField, $arrParams);``
     * Array - each element of the array corresponds to a field to be updated
         (tbu.name = o.name, tbu.phone = o.phone)
 
+Returns:
+--------
+``Integer``
+
+Returns the number of affected rows
+
 Examples:
 ---------
 

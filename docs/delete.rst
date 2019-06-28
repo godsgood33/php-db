@@ -18,6 +18,11 @@ $arrJoins = []);``
 * arrWhere - (array) Optional 2-dimensional array to build where clause from
 * arrJoins - (array) Optional 2-dimensional array to add other flags
 
+Returns:
+--------
+``Integer``
+
+Returns the number of affected rows
 
 Examples:
 ---------
