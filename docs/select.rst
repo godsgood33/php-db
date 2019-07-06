@@ -21,7 +21,7 @@ $arrFlags = []);``
 
 Returns:
 --------
-``stdClass`` | ``array:stdClass``
+``stdClass`` | ``array:stdClass`` | ``null``
 
 If there is only one row, it will return just a single stdClass object
 
