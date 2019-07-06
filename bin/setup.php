@@ -10,12 +10,10 @@ if(isset($cmd['h']) || isset($cmd['help'])) {
     die(algorithms());
 }
 
-$salt = base64_encode(openssl_random_pseudo_bytes(32));
-
 $encrypt = isset($cmd['a']);
 if($encrypt) {
+    $salt = base64_encode(openssl_random_pseudo_bytes(32));
     $algorithm = $cmd['a'];
-    $salt = $salt;
 } else {
     $algorithm = '';
     $salt = '';
@@ -29,10 +27,7 @@ print "MySQL Server: ";
 $server = trim(fgets(STDIN));
 print "MySQL User: ";
 $user = trim(fgets(STDIN));
-print "MySQL Password: ";
-system("stty -echo");
-$password = trim(fgets(STDIN));
-system("stty echo");
+$password = getPassword();
 $pwd = ($encrypt ? Godsgood33\Php_Db\Database::encrypt($password, $salt) : $password);
 
 print PHP_EOL . "MySQL Schema: ";
@@ -96,4 +91,25 @@ function array_iunique($array)
         $array,
         array_unique(array_map('strtolower', $array))
     );
+}
+
+function getPassword()
+{
+    if(preg_match('/^win/i', PHP_OS)) {
+        $vbscript = sys_get_temp_dir() . '\prompt_password.vbs';
+        file_put_contents(
+            $vbscript, 'wscript.echo(InputBox("' .
+                addslashes("MySQL Password: ") .
+                '", "", "password here"))'
+            );
+        $cmd = "cscript //nologo " . escapeshellarg($vbscript);
+        $password = rtrim(shell_exec($cmd));
+        unlink($vbscript);
+    } else {
+        system("stty -echo");
+        $password = trim(fgets(STDIN));
+        system("stty echo");
+    }
+
+    return $password;
 }
