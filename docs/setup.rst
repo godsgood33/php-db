@@ -21,11 +21,11 @@ included file prior to creating your DB instance.  It will look something like
 
     | define('PHP_DB_SERVER', '1.1.1.1');
     | define('PHP_DB_USER', 'root');
-    | define('PHP_DB_PWD', 'TnEwNjFMVk5WRzZ5andKV1NpcGRRUT09OjogCA5KbSuImmRVj9wyrYuO');
+    | define('PHP_DB_PWD', '{this is your encrypted password}');
     | define('PHP_DB_SCHEMA', 'test');
     | define('PHP_DB_ENCRYPT', true);
     | define('PHP_DB_ENCRYPT_ALGORITHM', 'AES-256-CBC-HMAC-SHA256');
-    | define('PHP_DB_ENCRYPT_SALT', '1raDTiAG0LGWsa2zw6MIZlB/daU0hx+jc9X5qSwANPM=');
+    | define('PHP_DB_ENCRYPT_SALT', '{this is your encryption salt}');
 
 - PHP_DB_SERVER can be an IP or hostname as long as it is accessible
 - PHP_DB_USER is the user that you want this tool to connect to the server with
@@ -37,6 +37,11 @@ included file prior to creating your DB instance.  It will look something like
 - PHP_DB_ENCRYPT_ALGORITHM is the algorithm you selected
 - PHP_DB_ENCRYPT_SALT is a pseudo random base encoded list of characters
     from ``openssl_random_pseudo_bytes``
+
+If you would like to autorun/commit the queries and have the methods return the
+result of the query, you can add a ``PHP_DB_AUTORUN`` boolean constant
+
+    define('PHP_DB_AUTORUN', true);
 
 Again, once these are printed out, copy them to a file you include in your
 program (one good option is bootstrap.php if you use it).
