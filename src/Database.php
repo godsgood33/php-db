@@ -220,24 +220,6 @@ class Database
     protected $_insertId = null;
 
     /**
-     * Variable to decide if we need to automatically run the queries after generating them
-     *
-     * @access public
-     * @staticvar
-     * @var boolean
-     */
-    public static $autorun = false;
-
-    /**
-     * Variable to decide if the system should create a CLI logger in addition to the file logger
-     *
-     * @access public
-     * @staticvar
-     * @var boolean
-     */
-    public static $cliLog = false;
-
-    /**
      * Constructor
      *
      * @param string $strLogPath
@@ -285,7 +267,7 @@ class Database
             new StreamHandler(realpath($this->_logPath . "/db.log"), $this->_logLevel)
         ]);
 
-        if (PHP_SAPI == 'cli' && self::$cliLog) {
+        if (PHP_SAPI == 'cli' && defined('PHP_DB_CLI_LOG') && PHP_DB_CLI_LOG) {
             $stream = new StreamHandler(STDOUT, $this->_logLevel);
             $stream->setFormatter(new LineFormatter("%datetime% %level_name% %message%" . PHP_EOL, "H:i:s.u"));
             $this->_logger->pushHandler($stream);
@@ -402,8 +384,6 @@ class Database
             $this->_logger->debug("Getting schema {$row[0]}");
             return $row[0];
         }
-
-        return false;
     }
 
     /**
@@ -473,6 +453,7 @@ class Database
         }
 
         $this->_result = false;
+        $this->_insertId = null;
 
         if (is_a($this->_c, 'mysqli')) {
             if (! $this->_c->ping()) {
@@ -675,7 +656,7 @@ class Database
             $this->_sql .= $this->flags($arrFlags);
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -734,7 +715,7 @@ class Database
             $this->_sql .= $this->flags($arrFlags);
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -784,7 +765,7 @@ class Database
             throw new Exception("Invalid type passed to insert " . gettype($arrParams));
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -841,7 +822,7 @@ class Database
             throw new Exception("Invalid param type");
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -941,7 +922,7 @@ class Database
             $this->_sql .= $this->flags($arrFlags);
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -987,7 +968,7 @@ class Database
             throw new Exception("Do not understand datatype " . gettype($arrParams), E_ERROR);
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1033,7 +1014,7 @@ class Database
             }
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1081,7 +1062,7 @@ class Database
             }
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1144,7 +1125,7 @@ class Database
             }
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1187,7 +1168,7 @@ class Database
             throw new Exception("Table name is invalid");
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1215,7 +1196,7 @@ class Database
             throw new Exception("Table name is invalid");
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1259,7 +1240,7 @@ class Database
             $this->_sql = substr($this->_sql, 0, - 1) . ")";
         }
 
-        if (self::$autorun) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1344,7 +1325,11 @@ class Database
             $this->_sql .= ")";
         }
 
-        $this->execute();
+        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
+            return $this->execute();
+        }
+
+        return $this->_sql;
     }
 
     /**
@@ -1374,7 +1359,7 @@ class Database
         }
         $this->_sql .= " `{$params->name}` {$params->dataType}" . $nn . $default;
 
-        if(self::$autorun) {
+        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1406,7 +1391,7 @@ class Database
             $this->_sql .= " `{$params}`";
         }
 
-        if(self::$autorun) {
+        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1444,7 +1429,7 @@ class Database
         }
         $this->_sql .= " `{$params->name}` `{$params->new_name}` {$params->dataType}" . $nn . $default;
 
-        if(self::$autorun) {
+        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1490,10 +1475,12 @@ class Database
         } elseif(is_string($params->field) && is_string($params->local)) {
             $field = "`{$params->field}`";
             $local = "`{$params->local}`";
+        } else {
+            throw new Exception("Invalid type for the field and local values both must be an array or string");
         }
         $this->_sql .= " `{$params->id}` FOREIGN KEY ({$local}) REFERENCES `{$params->schema}`.`{$params->table}` ({$field}) ON DELETE {$params->delete} ON UPDATE {$params->update}";
 
-        if(self::$autorun) {
+        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1575,7 +1562,7 @@ class Database
         $default = null;
         $ret = null;
 
-        $nn = ($check->nn ? " NOT NULL" : null);
+        $nn = (isset($check->nn) && $check->nn ? " NOT NULL" : null);
         if ($check->default === null) {
             $default = " DEFAULT NULL";
         } elseif (strlen($check->default)) {
@@ -1637,8 +1624,15 @@ class Database
     public function tableExists($strSchema, $strTableName)
     {
         if (! $this->_c->select_db($strSchema)) {
-            fwrite(STDOUT, $this->_c->error . PHP_EOL);
+            $this->_logger->error("Schema {$strSchema} not found", [$this->_c->error]);
+            throw new Exception("Error connecting to schema {$strSchema}");
         }
+
+        if(preg_match("/[^A-Za-z0-9_%\-]/i", $strTableName)) {
+            $this->_logger->warning("Invalid table name {$strTableName}");
+            return false;
+        }
+
         $sql = "SHOW TABLES LIKE '{$strTableName}'";
 
         if ($res = $this->_c->query($sql)) {
@@ -1647,7 +1641,7 @@ class Database
             }
         } else {
             if ($this->_c->errno) {
-                fwrite(STDOUT, $this->_c->error . PHP_EOL);
+                $this->_logger->error($this->_c->error);
             }
         }
 
@@ -1711,27 +1705,6 @@ class Database
         }
 
         throw new Exception("Unknown datatype to escape in SQL string {$this->_sql} " . gettype($val), E_ERROR);
-    }
-
-    /**
-     * Function to retrieve all results
-     *
-     * @param int $intResultType
-     *
-     * @return mixed
-     */
-    protected function fetchAll($intResultType = MYSQLI_ASSOC)
-    {
-        $res = [];
-        if (method_exists('mysqli_result', 'fetch_all')) { // Compatibility layer with PHP < 5.3
-            $res = $this->_result->fetch_all($intResultType);
-        } else {
-            while ($tmp = $this->_result->fetch_array($intResultType)) {
-                $res[] = $tmp;
-            }
-        }
-
-        return $res;
     }
 
     /**
