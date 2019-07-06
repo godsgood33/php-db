@@ -8,6 +8,7 @@ Php-Db's documentation!
    setup
    DBWhere
    DBInterface
+   properties
    select
    selectCount
    insert
@@ -22,14 +23,11 @@ Php-Db's documentation!
    createTable
    alterTable
    tableExists
-
-   constants
+   fieldExists
 
    license
 
 Indices and tables
 ==================
 
-* :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
