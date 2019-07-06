@@ -9,5 +9,11 @@ returns boolean (true or false) if the field exists in the table specified
 Definition:
 -----------
 
-Examples:
----------
+``$this->fieldExists($strTableName, $strFieldName)``
+
+* strTableName - (string) the table to look for the field in
+* strFieldName - (string) the name of the field to look for
+
+Returns:
+--------
+``boolean``
