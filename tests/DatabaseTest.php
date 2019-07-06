@@ -40,6 +40,12 @@ final class DatabaseTest extends TestCase
         $this->assertFalse($ret);
     }
 
+    public function testSetVarFail()
+    {
+        $ret = $this->db->setVar('5*%#', '');
+        $this->assertFalse($ret);
+    }
+
     public function testSetSchemaWithNonExistentSchema()
     {
         $ret = $this->db->setSchema("george");
@@ -79,6 +85,36 @@ final class DatabaseTest extends TestCase
     {
         $l = new Monolog\Logger('test');
         $this->assertTrue($this->db->setLogger($l));
+    }
+
+    public function testCreateTableJson()
+    {
+        $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
+
+        $this->db->createTableJson($json->tables[0]);
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS `settings` (`id` int(11) AUTO_INCREMENT NOT NULL,`meta_key` varchar(100) NOT NULL,`meta_value` mediumtext DEFAULT NULL, UNIQUE(`meta_key`), PRIMARY KEY(`id`))", $this->db->getSql());
+
+        $this->assertTrue($this->db->execute());
+    }
+
+    public function testCreateTableJson2()
+    {
+        $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
+
+        $this->db->createTableJson($json->tables[1]);
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test` (`id` int(11) AUTO_INCREMENT NOT NULL,`fk` int(11) NOT NULL,`default` tinyint(1) DEFAULT '0',`enum` enum('1','2') DEFAULT '1', INDEX `default_idx` (`default`), PRIMARY KEY(`id`,`fk`))", $this->db->getSql());
+
+        $this->assertTrue($this->db->execute());
+    }
+
+    public function testCreateTableJson3()
+    {
+        $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
+
+        $this->db->createTableJson($json->tables[2]);
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test2` (`id` int(11) AUTO_INCREMENT NOT NULL, PRIMARY KEY(`id`))", $this->db->getSql());
+
+        $this->assertTrue($this->db->execute());
     }
 
     /**
@@ -240,10 +276,8 @@ final class DatabaseTest extends TestCase
 
     public function testCreateTable()
     {
-        // Database::$autorun = false;
         $this->db->createTable('test', false, $this->db->select("test"));
         $this->assertEquals("CREATE TABLE IF NOT EXISTS test AS (SELECT * FROM test)", $this->db->getSql());
-        // Database::$autorun = true;
     }
 
     public function testCreateTableWithArrayParameter()
@@ -266,30 +300,6 @@ final class DatabaseTest extends TestCase
             ]
         ]);
         $this->assertEquals("CREATE TEMPORARY TABLE IF NOT EXISTS test (`id` int(11) PRIMARY KEY,`name` varchar(100),`email` varchar(100) DEFAULT '')", $this->db->getSql());
-    }
-
-    public function testCreateTableJson()
-    {
-        $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
-
-        $this->db->createTableJson($json->tables[0]);
-        $this->assertEquals("CREATE TABLE IF NOT EXISTS `settings` (`id` int(11) AUTO_INCREMENT NOT NULL,`meta_key` varchar(100) NOT NULL,`meta_value` mediumtext DEFAULT NULL, UNIQUE(`meta_key`), PRIMARY KEY(`id`))", $this->db->getSql());
-    }
-
-    public function testCreateTableJson2()
-    {
-        $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
-
-        $this->db->createTableJson($json->tables[1]);
-        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test` (`id` int(11) AUTO_INCREMENT NOT NULL,`fk` int(11) NOT NULL,`default` tinyint(1) DEFAULT '0',`enum` enum('1','2') DEFAULT '1', INDEX `default_idx` (`default`), PRIMARY KEY(`id`,`fk`))", $this->db->getSql());
-    }
-
-    public function testCreateTableJson3()
-    {
-        $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
-
-        $this->db->createTableJson($json->tables[2]);
-        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test2` (`id` int(11) AUTO_INCREMENT NOT NULL, PRIMARY KEY(`id`))", $this->db->getSql());
     }
 
     public function testTableExists()
@@ -443,6 +453,23 @@ final class DatabaseTest extends TestCase
         $this->db->addConstraint('test', $tc);
     }
 
+    /**
+     * @expectedException Exception
+     */
+    public function testAlterTableAddConstraintWithInconsistentLocalAndFieldParameters()
+    {
+        $con = new stdClass();
+        $con->field = ['field1', 'field2'];
+        $con->local = 'local1';
+        $con->id = 'unique_id';
+        $con->schema = PHP_DB_SCHEMA;
+        $con->table = 'test';
+        $con->delete = 'CASCADE';
+        $con->update = 'NO ACTION';
+
+        $this->db->addConstraint('test', $con);
+    }
+
     public function testSelectCountWithNoParameters()
     {
         $this->db->selectCount("test");
@@ -567,6 +594,43 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("INSERT INTO test SELECT id FROM settings", $this->db->getSql());
     }
 
+    public function testInsertWithExecute()
+    {
+        $this->db->insert('test', [
+            'fk' => '1',
+            'default' => '1',
+            'enum' => '1'
+        ]);
+        $result = $this->db->execute();
+        $this->assertEquals(1, $result);
+    }
+
+    public function testEInsertWithExecute()
+    {
+        $this->db->extendedInsert('settings', ['meta_key', 'meta_value'], [
+            ['test1', 'test1'],
+            ['test2', 'test2']
+        ], true);
+        $rows = $this->db->execute();
+        $this->assertEquals(2, $rows);
+    }
+
+    public function testSelectCountWithExecute()
+    {
+        $this->db->selectCount('test');
+        $count = $this->db->execute();
+        $this->assertEquals(1, $count);
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testInsertWithObject()
+    {
+        $fh = fopen(__DIR__ . '/test', 'r');
+        $this->db->insert('settings', $fh);
+    }
+
     public function testSelectRetrieveObject()
     {
         $this->db->select("settings");
@@ -609,6 +673,13 @@ final class DatabaseTest extends TestCase
             'joins' => ["JOIN test2 t2 ON t2.id = t.fk"]
         ]);
         $this->assertEquals("SELECT * FROM test t JOIN test2 t2 ON t2.id = t.fk", $this->db->getSql());
+    }
+
+    public function testSelectWithExecute()
+    {
+        $this->db->select("test");
+        $rows = $this->db->execute();
+        $this->assertInstanceOf('stdClass', $rows);
     }
 
     /**
@@ -689,6 +760,15 @@ final class DatabaseTest extends TestCase
                 2
             ]
         ]);
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testEInsertInvalidParamType()
+    {
+        $tc = new TestClass();
+        $this->db->extendedInsert('test', ['id'], $tc);
     }
 
     public function testUpdateWithOneElementArrayParameter()
@@ -785,6 +865,14 @@ final class DatabaseTest extends TestCase
     {
         $this->db->extendedUpdate("test", "settings", "id", "name");
         $this->assertEquals("UPDATE test tbu INNER JOIN settings o USING (id) SET tbu.`name` = o.`name`", $this->db->getSql());
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testEUpdateWithNullParameter()
+    {
+        $this->db->extendedUpdate('test', null, null, null);
     }
 
     /**
@@ -898,6 +986,23 @@ final class DatabaseTest extends TestCase
         $this->assertEquals(null, $fd);
     }
 
+    public function testFieldCheck()
+    {
+        $fd = $this->db->fieldData('settings', ['meta_key']);
+        $mk_data = (object) [
+            'name' => 'meta_key',
+            'length' => 100,
+            'flags' => MYSQLI_UNIQUE_KEY_FLAG,
+            'type' => MYSQLI_TYPE_VAR_STRING,
+            'dataType' => 'varchar(100)',
+            'nn' => true,
+            'default' => ''
+        ];
+
+        $result = $this->db->fieldCheck($fd['meta_key'], $mk_data, [], null);
+        $this->assertNull($result);
+    }
+
     public function testDeleteBasic()
     {
         $this->db->delete("test");
@@ -955,26 +1060,27 @@ final class DatabaseTest extends TestCase
 
     public function testDropSettingsTable()
     {
-        // Database::$autorun = false;
         $sql = $this->db->drop("settings");
         $this->assertEquals("DROP TABLE IF EXISTS `settings`", $sql);
-        // Database::$autorun = true;
     }
 
     public function testDropTestTable()
     {
-        // Database::$autorun = false;
         $sql = $this->db->drop("test");
         $this->assertEquals("DROP TABLE IF EXISTS `test`", $sql);
-        // Database::$autorun = true;
+    }
+
+    public function testDropWithExecute()
+    {
+        $this->db->drop('test');
+        $result = $this->db->execute();
+        $this->assertTrue($result);
     }
 
     public function testDropView()
     {
-        // Database::$autorun = false;
         $sql = $this->db->drop("test", "view");
         $this->assertEquals("DROP VIEW IF EXISTS `test`", $sql);
-        // Database::$autorun = true;
     }
 
     /**
@@ -1003,7 +1109,7 @@ final class DatabaseTest extends TestCase
 
     public function testQuery()
     {
-        $this->db->select("test");
+        $this->db->select("settings");
         $ret = $this->db->query();
         $this->assertInstanceOf('mysqli_result', $ret);
     }
@@ -1095,5 +1201,13 @@ final class DatabaseTest extends TestCase
     {
         $json = json_encode("{'test':'test'}");
         $this->assertTrue($this->db->isJson($json));
+    }
+
+    public function testDropAllTables()
+    {
+        $this->db->drop('settings');
+        $this->assertTrue($this->db->execute());
+        $this->db->drop('test2');
+        $this->assertTrue($this->db->execute());
     }
 }
