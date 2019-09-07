@@ -143,7 +143,7 @@ class Database
 
     /**
      * Constant defining action to add a constraint
-     * 
+     *
      * @var integer
      */
     const ADD_CONSTRAINT = 4;
@@ -239,7 +239,7 @@ class Database
         } elseif(defined('PHP_DB_ENCRYPT') && (!defined('PHP_DB_ENCRYPT_ALGORITHM') || !defined('PHP_DB_ENCRYPT_SALT'))) {
             throw new Exception("Missing required PHP_DB_ENCRYPT_ALGORITHM or PHP_DB_ENCRYPT_SALT constants");
         }
-        
+
         if(defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
             $pwd = $this->decrypt(PHP_DB_PWD);
         } else {
@@ -247,7 +247,7 @@ class Database
         }
 
         $this->_c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, $pwd, PHP_DB_SCHEMA);
-        
+
         if ($this->_c->connect_errno) {
             throw new Exception("Could not create database class due to error {$this->_c->connect_error}", E_ERROR);
         }
@@ -903,7 +903,7 @@ class Database
         }
 
         $where = $this->parseClause($arrWhere);
-        
+
         if (! is_null($where) && is_array($where) && count($where)) {
             $where_str = " WHERE";
             $this->_logger->debug("Parsing where clause and adding to query");
@@ -1232,10 +1232,15 @@ class Database
 
             foreach ($strSelect as $field) {
                 $default = null;
-                if (isset($field['default'])) {
-                    $default = (is_null($field['default']) ? "" : " DEFAULT '{$field['default']}'");
+                if(is_a($field, 'Godsgood33\Php_Db\DBCreateTable')) {
+                    $this->_sql .= (string) $field . ",";
                 }
-                $this->_sql .= "`{$field['field']}` {$field['datatype']}" . $default . (isset($field['option']) ? " {$field['option']}" : '') . ",";
+                elseif(is_array($field)) {
+                    if (isset($field['default'])) {
+                        $default = (is_null($field['default']) ? "" : " DEFAULT '{$field['default']}'");
+                    }
+                    $this->_sql .= "`{$field['field']}` {$field['datatype']}" . $default . (isset($field['option']) ? " {$field['option']}" : '') . ",";
+                }
             }
             $this->_sql = substr($this->_sql, 0, - 1) . ")";
         }
@@ -1334,10 +1339,10 @@ class Database
 
     /**
      * Method to add a column to the database (only one at a time!)
-     * 
+     *
      * @param string $strTableName
      * @param stdClass $params
-     * 
+     *
      * @return string|mixed
      */
     public function addColumn($strTableName, $params)
@@ -1368,10 +1373,10 @@ class Database
 
     /**
      * Method to drop a fields from a table
-     * 
+     *
      * @param string $strTableName
      * @param string|array:string $params
-     * 
+     *
      * @return string|mixed
      */
     public function dropColumn($strTableName, $params)
@@ -1400,10 +1405,10 @@ class Database
 
     /**
      * Method to modify a field to change it's datatype, name, or other parameter
-     * 
+     *
      * @param string $strTableName
      * @param stdClass $params
-     * 
+     *
      * @return string|mixed
      */
     public function modifyColumn($strTableName, $params)
@@ -1438,10 +1443,10 @@ class Database
 
     /**
      * Method to add a constraint to a table
-     * 
+     *
      * @param string $strTableName
      * @param stdClass $params
-     * 
+     *
      * @return string|mixed
      */
     public function addConstraint($strTableName, $params)
@@ -1878,12 +1883,12 @@ class Database
 
     /**
      * Method to add a where clause
-     * 
+     *
      * @param DBWhere|array:DBWhere $where
-     * 
+     *
      * @return boolean|array:DBWhere
      */
-    public function parseClause($where) 
+    public function parseClause($where)
     {
         $ret = [];
         $interfaces = [];
@@ -1919,9 +1924,9 @@ class Database
      *
      * @param string $data
      * @param string $key
-     * 
+     *
      * @throws Exception
-     * 
+     *
      * @return string
      */
     public static function encrypt($data, $salt = null)
@@ -1948,9 +1953,9 @@ class Database
      * Decryption algorithm
      *
      * @param string $data
-     * 
+     *
      * @throws Exception
-     * 
+     *
      * @return string
      */
     public static function decrypt($data)
@@ -1970,10 +1975,10 @@ class Database
 
     /**
      * Method to check if all required fields are available in the object
-     * 
+     *
      * @param object $object
      * @param array:string $requiredFields
-     * 
+     *
      * @return boolean
      */
     public static function checkObject($object, $requiredFields)

@@ -1,5 +1,6 @@
 <?php
 use Godsgood33\Php_Db\Database;
+use Godsgood33\Php_Db\DBCreateTable;
 use Godsgood33\Php_Db\DBWhere;
 use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
@@ -1115,7 +1116,7 @@ final class DatabaseTest extends TestCase
     }
 
     /**
-     * 
+     *
      */
     public function testGetQueryType()
     {
@@ -1209,5 +1210,16 @@ final class DatabaseTest extends TestCase
         $this->assertTrue($this->db->execute());
         $this->db->drop('test2');
         $this->assertTrue($this->db->execute());
+    }
+
+    public function testCreateTableWithClass()
+    {
+        $field1 = new DBCreateTable('id', 'int(11)');
+        $field1->option = 'PRIMARY KEY AUTO_INCREMENT';
+        $field2 = new DBCreateTable('name', 'varchar(255)');
+
+        $this->db->createTable('test3', false, [$field1, $field2]);
+
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS test3 (`id` int(11) PRIMARY KEY AUTO_INCREMENT,`name` varchar(255))", $this->db->getSql());
     }
 }
