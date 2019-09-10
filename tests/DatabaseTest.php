@@ -15,7 +15,6 @@ require_once 'DBConfig.php';
  */
 final class DatabaseTest extends TestCase
 {
-
     private $db;
 
     public function setUp()
@@ -60,7 +59,7 @@ final class DatabaseTest extends TestCase
 
     public function testPassInMysqliConnection()
     {
-        if(defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
+        if (defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
             $pwd = Database::decrypt(PHP_DB_PWD);
         } else {
             $pwd = PHP_DB_PWD;
@@ -588,6 +587,14 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("INSERT INTO settings (`meta_key`,`meta_value`) VALUES ('test3','test3')", $this->db->getSql());
     }
 
+    public function testExtendedInsertWithDBInterfaceClass()
+    {
+        $tc1 = new TestClass3();
+        $tc2 = new TestClass3();
+        $this->db->extendedInsert('settings', ['meta_key', 'meta_value'], [$tc1, $tc2]);
+        $this->assertEquals("INSERT INTO settings (`meta_key`,`meta_value`) VALUES ('test3','test3'),('test3','test3')", $this->db->getSql());
+    }
+
     public function testInsertWithSelectStatement()
     {
         // insert query using SELECT statement
@@ -770,6 +777,16 @@ final class DatabaseTest extends TestCase
     {
         $tc = new TestClass();
         $this->db->extendedInsert('test', ['id'], $tc);
+    }
+
+    /**
+     * @expectedException Exception
+     */
+    public function testEInsertObjectNotUsingInterface()
+    {
+        $tc1 = new TestClass();
+        $tc2 = new TestClass();
+        $this->db->extendedInsert('test', ['test'], [$tc1, $tc2]);
     }
 
     public function testUpdateWithOneElementArrayParameter()

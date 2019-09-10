@@ -232,15 +232,15 @@ class Database
      */
     public function __construct($strLogPath = __DIR__, mysqli &$dbh = null, $intLogLevel = null)
     {
-        if(! is_null($dbh) && is_a($dbh, 'mysqli')) {
+        if (! is_null($dbh) && is_a($dbh, 'mysqli')) {
             $this->_c = $dbh;
-        } elseif(!defined('PHP_DB_SERVER') || !defined('PHP_DB_USER') || !defined('PHP_DB_PWD') || !defined('PHP_DB_SCHEMA')) {
+        } elseif (!defined('PHP_DB_SERVER') || !defined('PHP_DB_USER') || !defined('PHP_DB_PWD') || !defined('PHP_DB_SCHEMA')) {
             throw new Exception("Please create and include a constant file with the following constants defining your DB connection (PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA)", E_USER_ERROR);
-        } elseif(defined('PHP_DB_ENCRYPT') && (!defined('PHP_DB_ENCRYPT_ALGORITHM') || !defined('PHP_DB_ENCRYPT_SALT'))) {
+        } elseif (defined('PHP_DB_ENCRYPT') && (!defined('PHP_DB_ENCRYPT_ALGORITHM') || !defined('PHP_DB_ENCRYPT_SALT'))) {
             throw new Exception("Missing required PHP_DB_ENCRYPT_ALGORITHM or PHP_DB_ENCRYPT_SALT constants");
         }
 
-        if(defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
+        if (defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
             $pwd = $this->decrypt(PHP_DB_PWD);
         } else {
             $pwd = PHP_DB_PWD;
@@ -255,11 +255,11 @@ class Database
         $this->_logPath = $strLogPath;
         touch($this->_logPath . "/db.log");
 
-        if(!defined("PHP_DB_LOG_LEVEL") && is_null($intLogLevel)) {
+        if (!defined("PHP_DB_LOG_LEVEL") && is_null($intLogLevel)) {
             $this->_logLevel = Logger::ERROR;
-        } elseif(!is_null($intLogLevel)) {
+        } elseif (!is_null($intLogLevel)) {
             $this->_logLevel = $intLogLevel;
-        } elseif(defined('PHP_DB_LOG_LEVEL')) {
+        } elseif (defined('PHP_DB_LOG_LEVEL')) {
             $this->_logLevel = PHP_DB_LOG_LEVEL;
         }
 
@@ -411,7 +411,7 @@ class Database
      */
     public function setVar($strName, $strVal)
     {
-        if (! $strName ) {
+        if (! $strName) {
             $this->_logger->debug("name is blank", [
                 'name'  => $strName
             ]);
@@ -488,7 +488,8 @@ class Database
 
             $this->_logger->debug("Checking for query results");
             $this->_result = $this->checkResults($return);
-        } catch (Exception $e) {}
+        } catch (Exception $e) {
+        }
 
         return $this->_result;
     }
@@ -508,15 +509,13 @@ class Database
 
         if (in_array($this->_queryType, [Database::CREATE_TABLE, Database::ALTER_TABLE, Database::TRUNCATE, Database::DROP])) {
             $res = $this->_result;
-        }
-        elseif (in_array($this->_queryType, [Database::INSERT, Database::EXTENDED_INSERT, Database::DELETE, Database::UPDATE, Database::EXTENDED_UPDATE, Database::REPLACE, Database::EXTENDED_REPLACE, Database::DELETE])) {
+        } elseif (in_array($this->_queryType, [Database::INSERT, Database::EXTENDED_INSERT, Database::DELETE, Database::UPDATE, Database::EXTENDED_UPDATE, Database::REPLACE, Database::EXTENDED_REPLACE, Database::DELETE])) {
             $res = $this->_c->affected_rows;
 
             if (in_array($this->_queryType, [Database::INSERT, Database::REPLACE, Database::EXTENDED_INSERT])) {
                 $this->_insertId = $this->_c->insert_id;
             }
-        }
-        elseif ($this->_queryType == Database::SELECT_COUNT) {
+        } elseif ($this->_queryType == Database::SELECT_COUNT) {
             if (! is_a($this->_result, 'mysqli_result')) {
                 $this->_logger->error("Error with return on query");
                 return null;
@@ -538,17 +537,16 @@ class Database
             }
 
             mysqli_free_result($this->_result);
-        }
-        else {
+        } else {
             $method = "mysqli_fetch_object";
-            if($returnType == MYSQLI_ASSOC) {
+            if ($returnType == MYSQLI_ASSOC) {
                 $method = "mysqli_fetch_assoc";
             } elseif ($returnType == MYSQLI_NUM) {
                 $method = "mysqli_fetch_array";
             }
 
             if (is_a($this->_result, 'mysqli_result')) {
-                if($this->_result->num_rows > 1) {
+                if ($this->_result->num_rows > 1) {
                     $res = [];
                     while ($row = call_user_func($method, $this->_result)) {
                         $res[] = $row;
@@ -641,7 +639,7 @@ class Database
             $where_str = " WHERE";
             $this->_logger->debug("Parsing where clause and adding to query");
             foreach ($where as $x => $w) {
-                if($x > 0) {
+                if ($x > 0) {
                     $where_str .= " {$w->sqlOperator}";
                 }
                 $where_str .= $w;
@@ -701,7 +699,7 @@ class Database
             $where_str = " WHERE";
             $this->_logger->debug("Parsing where clause and adding to query");
             foreach ($where as $x => $w) {
-                if($x > 0) {
+                if ($x > 0) {
                     $where_str .= " {$w->sqlOperator}";
                 }
                 $where_str .= $w;
@@ -743,7 +741,7 @@ class Database
         }
 
         if (is_array($arrParams) && count($arrParams)) {
-            if(is_array($arrParams) && count($arrParams)) {
+            if (is_array($arrParams) && count($arrParams)) {
                 $this->_sql .= " (`" . implode("`,`", array_keys($arrParams)) . "`)";
             }
             $this->_sql .= " VALUES (" . implode(",", array_map([
@@ -754,7 +752,7 @@ class Database
             $this->_sql .= " {$arrParams}";
         } elseif (is_object($arrParams)) {
             $interfaces = \class_implements($arrParams);
-            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::insert")) {
+            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::insert")) {
                 $params = \call_user_func([$arrParams, "insert"]);
                 $this->_sql .= " (`" . implode("`,`", array_keys($params)) . "`) VALUES ";
                 $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
@@ -815,6 +813,19 @@ class Database
                         $this->_sql .= ",";
                     }
                 }
+            } elseif (isset($params[0]) && is_object($params[0])) {
+                $interfaces = \class_implements($params[0]);
+                if (!in_array("Godsgood33\Php_Db\DBInterface", $interfaces)) {
+                    throw new Exception("Object does not implement DBInterface interface and methods");
+                }
+                foreach ($params as $param) {
+                    if (!is_callable(get_class($param) . "::insert")) {
+                        throw new Exception("Cannot call insert method");
+                    }
+                    $key_value = \call_user_func([$param, "insert"]);
+                    $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($key_value))) . "),";
+                }
+                $this->_sql = substr($this->_sql, 0, -1);
             } else {
                 $this->_sql .= "(" . implode("),(", array_map([$this, '_escape'], array_values($params))) . ")";
             }
@@ -879,18 +890,18 @@ class Database
                     $this->_sql .= "$field=NULL";
                 }
 
-                if($f != end($keys)) {
+                if ($f != end($keys)) {
                     $this->_sql .= ",";
                 }
             }
         } elseif (is_object($arrParams)) {
             $interfaces = \class_implements($arrParams);
-            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::update")) {
+            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::update")) {
                 $params = \call_user_func([$arrParams, "update"]);
                 $fields = array_keys($params);
                 $values = array_map([$this, '_escape'], array_values($params));
-                foreach($fields as $x => $f) {
-                    if($x > 0) {
+                foreach ($fields as $x => $f) {
+                    if ($x > 0) {
                         $this->_sql .= ",";
                     }
                     $this->_sql .= "`{$f}`={$values[$x]}";
@@ -908,7 +919,7 @@ class Database
             $where_str = " WHERE";
             $this->_logger->debug("Parsing where clause and adding to query");
             foreach ($where as $x => $w) {
-                if($x > 0) {
+                if ($x > 0) {
                     $where_str .= " {$w->sqlOperator}";
                 }
                 $where_str .= $w;
@@ -996,7 +1007,7 @@ class Database
             throw new Exception("Table name is invalid");
         }
 
-        if(is_array($arrParams) && count($arrParams)) {
+        if (is_array($arrParams) && count($arrParams)) {
             $keys = array_keys($arrParams);
             $vals = array_values($arrParams);
 
@@ -1007,7 +1018,7 @@ class Database
             ], array_values($vals))) . ")";
         } elseif (is_object($arrParams)) {
             $interfaces = class_implements($arrParams);
-            if(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::replace")) {
+            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::replace")) {
                 $params = \call_user_func([$arrParams, "replace"]);
                 $this->_sql .= "(`" . implode("`,`", array_keys($params)) . "`) VALUES ";
                 $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
@@ -1115,7 +1126,7 @@ class Database
             $where_str = " WHERE";
             $this->_logger->debug("Parsing where clause and adding to query");
             foreach ($where as $x => $w) {
-                if($x > 0) {
+                if ($x > 0) {
                     $where_str .= " {$w->sqlOperator}";
                 }
                 $where_str .= $w;
@@ -1232,10 +1243,9 @@ class Database
 
             foreach ($strSelect as $field) {
                 $default = null;
-                if(is_a($field, 'Godsgood33\Php_Db\DBCreateTable')) {
+                if (is_a($field, 'Godsgood33\Php_Db\DBCreateTable')) {
                     $this->_sql .= (string) $field . ",";
-                }
-                elseif(is_array($field)) {
+                } elseif (is_array($field)) {
                     if (isset($field['default'])) {
                         $default = (is_null($field['default']) ? "" : " DEFAULT '{$field['default']}'");
                     }
@@ -1279,7 +1289,7 @@ class Database
 
             if (isset($field->nn) && $field->nn) {
                 $this->_sql .= " NOT NULL";
-            } elseif(isset($field->default)) {
+            } elseif (isset($field->default)) {
                 if (strtolower($field->default) == 'null') {
                     $this->_sql .= " DEFAULT NULL";
                 } elseif (strlen($field->default)) {
@@ -1295,16 +1305,16 @@ class Database
         if (isset($json->index) && count($json->index)) {
             foreach ($json->index as $ind) {
                 $ref = null;
-                if(is_array($ind->ref)) {
+                if (is_array($ind->ref)) {
                     $ref = "";
-                    foreach($ind->ref as $r) {
+                    foreach ($ind->ref as $r) {
                         $ref .= "`{$r}` ASC,";
                     }
                     $ref = substr($ref, 0, -1);
-                } elseif(is_string($ind->ref)) {
+                } elseif (is_string($ind->ref)) {
                     $ref = $ind->ref;
                 }
-                if(!is_null($ref)) {
+                if (!is_null($ref)) {
                     $this->_sql .= ", " . strtoupper($ind->type) . " `{$ind->id}` (`{$ref}`)";
                 }
             }
@@ -1330,7 +1340,7 @@ class Database
             $this->_sql .= ")";
         }
 
-        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1350,7 +1360,7 @@ class Database
         $this->_queryType = self::ALTER_TABLE;
         $this->_sql = "ALTER TABLE {$strTableName} ADD COLUMN";
 
-        if(!self::checkObject($params, ['name', 'dataType'])) {
+        if (!self::checkObject($params, ['name', 'dataType'])) {
             $this->_logger->error("Missing elements for the addColumn method (need 'name', 'dataType')", [$params]);
             throw new \Exception("Missing elements for the addColumn method");
         }
@@ -1364,7 +1374,7 @@ class Database
         }
         $this->_sql .= " `{$params->name}` {$params->dataType}" . $nn . $default;
 
-        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1384,7 +1394,7 @@ class Database
         $this->_queryType = self::ALTER_TABLE;
         $this->_sql = "ALTER TABLE {$strTableName} DROP COLUMN";
 
-        if(is_array($params) && count($params)) {
+        if (is_array($params) && count($params)) {
             foreach ($params as $col) {
                 $this->_sql .= " `{$col->name}`";
 
@@ -1392,11 +1402,11 @@ class Database
                     $this->_sql .= ",";
                 }
             }
-        } elseif(is_string($params)) {
+        } elseif (is_string($params)) {
             $this->_sql .= " `{$params}`";
         }
 
-        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1416,12 +1426,12 @@ class Database
         $this->_queryType = self::ALTER_TABLE;
         $this->_sql = "ALTER TABLE {$strTableName} MODIFY COLUMN";
 
-        if(!self::checkObject($params, ['name', 'dataType'])) {
+        if (!self::checkObject($params, ['name', 'dataType'])) {
             $this->_logger->error("Missing elements to the modifyColumn method (need 'name' and 'dataType')", [$params]);
             throw new \Exception("Missing elements to the modifyColumn method");
         }
 
-        if(!isset($params->new_name)) {
+        if (!isset($params->new_name)) {
             $params->new_name = $params->name;
         }
 
@@ -1434,7 +1444,7 @@ class Database
         }
         $this->_sql .= " `{$params->name}` `{$params->new_name}` {$params->dataType}" . $nn . $default;
 
-        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1454,30 +1464,30 @@ class Database
         $this->_queryType = self::ALTER_TABLE;
         $this->_sql = "ALTER TABLE {$strTableName} ADD CONSTRAINT";
 
-        if(!is_a($params, 'stdClass')) {
+        if (!is_a($params, 'stdClass')) {
             $this->_logger->critical("Error in reading constraint field");
             throw new \Exception("Error in reading constraint field");
         }
 
-        if(!self::checkObject($params, ['id', 'local', 'schema', 'table', 'field', 'delete', 'update'])) {
+        if (!self::checkObject($params, ['id', 'local', 'schema', 'table', 'field', 'delete', 'update'])) {
             $this->_logger->error("Missing elements in the addConstraint method (need 'id', 'local', 'schema', 'table', 'field', 'delete', 'update')", [$params]);
             throw new \Exception("There are some missing elements for the addConstraint action");
         }
 
-        if(!in_array(strtoupper($params->delete), ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])) {
+        if (!in_array(strtoupper($params->delete), ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])) {
             $this->_logger->error("Invalid action for deletion on addConstraint");
             throw new \Exception("Invalid action for deletion on addConstraint");
         }
 
-        if(!in_array(strtoupper($params->update), ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])) {
+        if (!in_array(strtoupper($params->update), ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])) {
             $this->_logger->error("Invalid action for update on addConstraint");
             throw new Exception("Invalid action for update on addConstraint");
         }
 
-        if(is_array($params->field) && is_array($params->local)) {
+        if (is_array($params->field) && is_array($params->local)) {
             $field = "`" . implode("`,`", $params->field) . "`";
             $local = "`" . implode("`,`", $params->local) . "`";
-        } elseif(is_string($params->field) && is_string($params->local)) {
+        } elseif (is_string($params->field) && is_string($params->local)) {
             $field = "`{$params->field}`";
             $local = "`{$params->local}`";
         } else {
@@ -1485,7 +1495,7 @@ class Database
         }
         $this->_sql .= " `{$params->id}` FOREIGN KEY ({$local}) REFERENCES `{$params->schema}`.`{$params->table}` ({$field}) ON DELETE {$params->delete} ON UPDATE {$params->update}";
 
-        if(defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
+        if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
             return $this->execute();
         }
 
@@ -1633,7 +1643,7 @@ class Database
             throw new Exception("Error connecting to schema {$strSchema}");
         }
 
-        if(preg_match("/[^A-Za-z0-9_%\-]/i", $strTableName)) {
+        if (preg_match("/[^A-Za-z0-9_%\-]/i", $strTableName)) {
             $this->_logger->warning("Invalid table name {$strTableName}");
             return false;
         }
@@ -1693,7 +1703,7 @@ class Database
             return $val ? "'1'" : "'0'";
         } elseif (is_array($val)) {
             $ret = [];
-            foreach($val as $v) {
+            foreach ($val as $v) {
                 $ret[] = $this->_escape($v);
             }
             return "(" . implode(",", $ret) . ")";
@@ -1782,12 +1792,12 @@ class Database
             $having = " HAVING";
             $this->_logger->debug("Parsing where clause and adding to query");
             foreach ($arrFlags['having'] as $x => $h) {
-                if($x > 0) {
+                if ($x > 0) {
                     $having .= " {$h->sqlOperator}";
                 }
                 $having .= $h;
             }
-            if(strlen($having) > strlen(" HAVING")) {
+            if (strlen($having) > strlen(" HAVING")) {
                 $ret .= $having;
             }
         }
@@ -1892,12 +1902,12 @@ class Database
     {
         $ret = [];
         $interfaces = [];
-        if(is_object($where)) {
+        if (is_object($where)) {
             $interfaces = \class_implements($where);
         }
-        if(is_array($where)) {
-            foreach($where as $k => $w) {
-                if(!is_a($w, 'Godsgood33\Php_Db\DBWhere')) {
+        if (is_array($where)) {
+            foreach ($where as $k => $w) {
+                if (!is_a($w, 'Godsgood33\Php_Db\DBWhere')) {
                     return false;
                 }
                 $v = $this->_escape($w->value, $w->escape);
@@ -1905,11 +1915,11 @@ class Database
 
                 $ret[] = $where[$k];
             }
-        } elseif(is_a($where, 'Godsgood33\Php_Db\DBWhere')) {
+        } elseif (is_a($where, 'Godsgood33\Php_Db\DBWhere')) {
             $v = $this->_escape($where->value, $where->escape);
             $where->value = $v;
             $ret[] = $where;
-        } elseif(in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($where) . "::where")) {
+        } elseif (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($where) . "::where")) {
             $params = \call_user_func([$where, "where"]);
             $ret = $this->parseClause($params);
         } else {
@@ -1931,7 +1941,7 @@ class Database
      */
     public static function encrypt($data, $salt = null)
     {
-        if(!defined('PHP_DB_ENCRYPT_SALT') || !defined('PHP_DB_ENCRYPT_ALGORITHM')) {
+        if (!defined('PHP_DB_ENCRYPT_SALT') || !defined('PHP_DB_ENCRYPT_ALGORITHM')) {
             throw new Exception("Need to declare and populate PHP_DB_ENCRYPT_SALT and PHP_DB_ENCRYPT_ALGORITHM");
         }
 
@@ -1960,7 +1970,7 @@ class Database
      */
     public static function decrypt($data)
     {
-        if(!defined('PHP_DB_ENCRYPT_SALT') || !defined('PHP_DB_ENCRYPT_ALGORITHM')) {
+        if (!defined('PHP_DB_ENCRYPT_SALT') || !defined('PHP_DB_ENCRYPT_ALGORITHM')) {
             throw new Exception("Need to declare and populate PHP_DB_ENCRYPT_SALT and PHP_DB_ENCRYPT_ALGORITHM");
         }
 
@@ -1984,8 +1994,8 @@ class Database
     public static function checkObject($object, $requiredFields)
     {
         $haystack = array_keys(json_decode(json_encode($object), true));
-        foreach($requiredFields as $r) {
-            if(!in_array($r, $haystack)) {
+        foreach ($requiredFields as $r) {
+            if (!in_array($r, $haystack)) {
                 return false;
             }
         }
