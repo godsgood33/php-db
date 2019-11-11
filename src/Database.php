@@ -1696,7 +1696,7 @@ class Database
             } elseif ($blnEscape) {
                 return "'{$this->_c->real_escape_string($val)}'";
             }
-            return "'{$val}'";
+            return $val;
         } elseif (is_a($val, 'DateTime')) {
             return "'{$val->format(MYSQL_DATETIME)}'";
         } elseif (is_bool($val)) {
