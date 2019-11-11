@@ -25,10 +25,14 @@ class DBCreateTable
      * @param string $field
      * @param string $datatype
      */
-    public function __construct(string $field, string $datatype)
+    public function __construct(string $field, string $datatype, $default = null, $option = null)
     {
-        $this->data['field'] = $field;
-        $this->data['datatype'] = $datatype;
+		$this->data = [
+			'field' => $field,
+			'datatype' => $datatype,
+			'default' => $default,
+			'option' => $option
+		];
     }
 
     /**
