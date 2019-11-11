@@ -1,17 +1,17 @@
 <?php
 
-require_once dirname(__DIR__) . "/vendor/autoload.php";
+require_once "vendor/autoload.php";
 
 $cmd = getopt("h::a::", ['algorithms::', 'help::']);
 
-if(isset($cmd['h']) || isset($cmd['help'])) {
+if (isset($cmd['h']) || isset($cmd['help'])) {
     die(usage());
-} elseif(isset($cmd['algorithms'])) {
+} elseif (isset($cmd['algorithms'])) {
     die(algorithms());
 }
 
 $encrypt = isset($cmd['a']);
-if($encrypt) {
+if ($encrypt) {
     $salt = base64_encode(openssl_random_pseudo_bytes(32));
     $algorithm = $cmd['a'];
 } else {
@@ -51,7 +51,6 @@ EOL;
 
 function usage()
 {
-
     return <<<EOL
 Purpose: Run a setup for PHP_DB mysqli helper
 
@@ -60,8 +59,8 @@ Usage: php setup.php -a={algorithm} [--algorithms] [--encrypt] [-h|--help]
  --algorithms       Print out a list list of all the OpenSSL algorithms this system supports
 
  -a={algorithm}     The OpenSSL algorithm used to encrypt the password
- 
- 
+
+
  -h|--help          This help screen
 
 
@@ -70,19 +69,19 @@ EOL;
 
 /**
  * Function to print out all the supported OpenSSL encryption algorithms for the given system
- * 
+ *
  * @return string
  */
 function algorithms()
 {
     $algorithms = implode(",", array_iunique(openssl_get_cipher_methods(false)));
-    
+
     return $algorithms . PHP_EOL;
 }
 
 /**
  * Function to strip duplicates from an array case-insensitively
- * 
+ *
  * @return array
  */
 function array_iunique($array)
@@ -95,10 +94,11 @@ function array_iunique($array)
 
 function getPassword()
 {
-    if(preg_match('/^win/i', PHP_OS)) {
+    if (preg_match('/^win/i', PHP_OS)) {
         $vbscript = sys_get_temp_dir() . '\prompt_password.vbs';
         file_put_contents(
-            $vbscript, 'wscript.echo(InputBox("' .
+            $vbscript,
+            'wscript.echo(InputBox("' .
                 addslashes("MySQL Password: ") .
                 '", "", "password here"))'
             );
