@@ -1905,8 +1905,6 @@ class Database
             $this->_logger->warning("Failed to get where from", [$where]);
         }
 
-        print_r($ret);
-
         return $ret;
     }
 
