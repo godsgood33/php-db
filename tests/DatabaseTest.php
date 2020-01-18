@@ -75,12 +75,6 @@ final class DatabaseTest extends TestCase
         $this->assertInstanceOf("Godsgood33\Php_Db\Database", $this->db);
     }
 
-    public function testSetLogLevel()
-    {
-        $this->db->setLogLevel(Logger::DEBUG);
-        $this->assertEquals(Logger::DEBUG, $this->db->getLogLevel());
-    }
-
     public function testSetLogger()
     {
         $l = new Monolog\Logger('test');
