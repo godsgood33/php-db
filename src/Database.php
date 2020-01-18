@@ -2002,4 +2002,14 @@ class Database
 
         return true;
     }
+
+    /**
+     * Method to retrieve the error data
+     *
+     * @return string
+     */
+    public function error(): string
+    {
+        return $this->_c->error;
+    }
 }
