@@ -321,27 +321,6 @@ class Database
     }
 
     /**
-     * Function to set the log level just in case there needs to be a change to the default log level
-     *
-     * @param string $strLevel
-     */
-    public function setLogLevel($strLevel)
-    {
-        $this->_logger->debug("Setting log level to {$strLevel}");
-        $this->_logLevel = $strLevel;
-
-        $handles = [];
-
-        foreach ($this->_logger->getHandlers() as $h) {
-            $h->/** @scrutinizer ignore-call */
-                setLevel($strLevel);
-            $handles[] = $h;
-        }
-
-        $this->_logger->setHandlers($handles);
-    }
-
-    /**
      * Getter function for _queryType
      *
      * @return int
