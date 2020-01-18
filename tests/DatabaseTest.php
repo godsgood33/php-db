@@ -15,6 +15,9 @@ require_once 'DBConfig.php';
  */
 final class DatabaseTest extends TestCase
 {
+    /**
+     * @var Database
+     */
     private $db;
 
     public function setUp()
@@ -548,7 +551,6 @@ final class DatabaseTest extends TestCase
     public function testSelectCountWithMultipleWhereClauses()
     {
         $where1 = new DBWhere('name', '%george%', DBWhere::LIKE);
-        $where1->escape = false;
         $where2 = new DBWhere('state', 'IN');
 
         $this->db->selectCount('test', [$where1, $where2]);
@@ -1033,7 +1035,6 @@ final class DatabaseTest extends TestCase
     public function testDeleteWithMultipleWhereClauses()
     {
         $where1 = new DBWhere('name', '%george%', DBWhere::LIKE);
-        $where1->escape = false;
         $where2 = new DBWhere('state', 'IN');
 
         $this->db->delete('test', null, [$where1, $where2]);
