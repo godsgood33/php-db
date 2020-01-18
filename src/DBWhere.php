@@ -183,7 +183,10 @@ class DBWhere
                 return '';
             }
         } elseif ($this->data['operator'] == self::BETWEEN) {
-            $ret .= " {$field} BETWEEN {$this->data['low']} AND {$this->data['high']}";
+            $low = (is_string($this->data['low']) ? "'{$this->data['low']}'" : $this->data['low']);
+            $high = (is_string($this->data['high']) ? "'{$this->data['high']}'" : $this->data['high']);
+
+            $ret .= " {$field} BETWEEN {$low} AND {$high}";
         } else {
             $value = (is_null($this->data['value']) ? "NULL" : $this->data['value']);
 
