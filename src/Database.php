@@ -1905,6 +1905,8 @@ class Database
             $this->_logger->warning("Failed to get where from", [$where]);
         }
 
+        print_r($ret);
+
         return $ret;
     }
 
@@ -1987,7 +1989,7 @@ class Database
      *
      * @return string
      */
-    public function error(): string
+    public function error()
     {
         return $this->_c->error;
     }
