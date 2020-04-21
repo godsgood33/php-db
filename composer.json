@@ -1,12 +1,11 @@
 {
 	"require": {
-		"monolog/monolog": "2.0",
+		"monolog/monolog": "^2.0",
 		"ext-openssl": "*",
 		"ext-mysqli": "*"
 	},
 	"name": "godsgood33/php-db",
 	"description": "PHP Database Library",
-	"version": "2.3.0",
 	"homepage": "https://github.com/godsgood33/php-db",
 	"license": "Apache-2.0",
 	"minimum-stability": "beta",
