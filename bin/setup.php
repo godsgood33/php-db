@@ -27,6 +27,7 @@ print "MySQL Server: ";
 $server = trim(fgets(STDIN));
 print "MySQL User: ";
 $user = trim(fgets(STDIN));
+print "MySQL Password: ";
 $password = getPassword();
 $pwd = ($encrypt ? Godsgood33\Php_Db\Database::encrypt($password, $salt) : $password);
 
