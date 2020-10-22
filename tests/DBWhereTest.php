@@ -108,7 +108,7 @@ final class DBWhereTest extends TestCase
     {
         $where = new DBWhere("id", 1);
         $where->backticks = false;
-     
+
         $this->assertEquals(" id = 1", (string) $where);
     }
 
@@ -119,20 +119,16 @@ final class DBWhereTest extends TestCase
         $this->assertEquals(" LOWER(`name`) = LOWER(Frank)", (string) $where);
     }
 
-    /**
-     * @expectedException InvalidArgumentException
-     */
     public function testInvalidArgumentSet()
     {
+        $this->expectException(InvalidArgumentException::class);
         $where = new DBWhere();
         $where->foo = 'bar';
     }
 
-    /**
-     * @expectedException InvalidArgumentException
-     */
     public function testGetInvalidProperty()
     {
+        $this->expectException(InvalidArgumentException::class);
         $where = new DBWhere();
         return $where->foo;
     }
