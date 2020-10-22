@@ -229,6 +229,14 @@ class Database
      *            [by ref]
      *            mysqli object to perform queries.
      * @param int $intLogLevel
+     *
+     * @uses PHP_DB_ENCRYPT boolean to define if the password is encrypted
+     * @uses PHP_DB_PWD string to store the password
+     * @uses PHP_DB_SERVER string to store the database server name or IP
+     * @uses PHP_DB_USER string to store the name of the user used to connect to the server
+     * @uses PHP_DB_SCHEMA string to store the default schema to connect to
+     * @uses PHP_DB_LOG_LEVEL int to store the PSR-4 log level for the library
+     * @uses PHP_DB_CLI_LOG bool to store if logs should be echoed to STDOUT
      */
     public function __construct($strLogPath = __DIR__, mysqli &$dbh = null, $intLogLevel = null)
     {
@@ -468,6 +476,7 @@ class Database
             $this->_logger->debug("Checking for query results");
             $this->_result = $this->checkResults($return);
         } catch (Exception $e) {
+            $this->_logger->error($e);
         }
 
         return $this->_result;
@@ -587,6 +596,8 @@ class Database
      * @throws Exception
      *
      * @return mixed
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function select($strTableName, $fields = null, $arrWhere = [], $arrFlags = [])
     {
@@ -655,6 +666,8 @@ class Database
      * @see Database::flags()
      *
      * @return string|NULL
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function selectCount($strTableName, $arrWhere = [], $arrFlags = [])
     {
@@ -707,6 +720,8 @@ class Database
      * @param boolean $blnToIgnore
      *
      * @return string|NULL
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function insert($strTableName, $arrParams = null, $blnToIgnore = false)
     {
@@ -763,6 +778,8 @@ class Database
      *            Boolean to decide if we need to use the INSERT IGNORE INTO syntax
      *
      * @return NULL|string Returns the SQL if self::$autorun is set to false, else it returns the output from running.
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function extendedInsert($strTableName, $arrFields, $params, $blnToIgnore = false)
     {
@@ -836,6 +853,8 @@ class Database
      * @see Database::flags()
      *
      * @return NULL|string
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function update($strTableName, $arrParams, $arrWhere = [], $arrFlags = [])
     {
@@ -933,6 +952,8 @@ class Database
      *            If array each element in the array is a field to be updated (tbu.$param = o.$param)
      *
      * @return mixed
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function extendedUpdate($strTableToUpdate, $strOriginalTable, $strLinkField, $arrParams)
     {
@@ -974,6 +995,8 @@ class Database
      *            Name/value pair to insert
      *
      * @return NULL|string
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function replace($strTableName, $arrParams)
     {
@@ -1022,6 +1045,8 @@ class Database
      *            Two-dimensional array of values
      *
      * @return NULL|string
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function extendedReplace($strTableName, $arrFields, $arrParams)
     {
@@ -1077,6 +1102,8 @@ class Database
      * @see Database::flags()
      *
      * @return string|NULL
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function delete($strTableName, $arrFields = [], $arrWhere = [], $arrJoins = [])
     {
@@ -1135,6 +1162,8 @@ class Database
      *            Optional boolean if this is a temporary table
      *
      * @return string|NULL
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function drop($strTableName, $strType = 'table', $blnIsTemp = false)
     {
@@ -1174,6 +1203,8 @@ class Database
      * @throws Exception
      *
      * @return string|NULL
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function truncate($strTableName)
     {
@@ -1208,6 +1239,8 @@ class Database
      *            If array, 2-dimensional array with "field", "datatype" values to build table fields
      *
      * @return NULL|string
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function createTable($strTableName, $blnIsTemp = false, $strSelect = null)
     {
@@ -1248,6 +1281,7 @@ class Database
      *
      * @example /examples/create_table_json.json
      *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function createTableJson($json)
     {
@@ -1330,9 +1364,11 @@ class Database
      * Method to add a column to the database (only one at a time!)
      *
      * @param string $strTableName
-     * @param stdClass $params
+     * @param \stdClass $params
      *
      * @return string|mixed
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function addColumn($strTableName, $params)
     {
@@ -1367,6 +1403,8 @@ class Database
      * @param string|array:string $params
      *
      * @return string|mixed
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function dropColumn($strTableName, $params)
     {
@@ -1399,6 +1437,8 @@ class Database
      * @param stdClass $params
      *
      * @return string|mixed
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function modifyColumn($strTableName, $params)
     {
@@ -1437,6 +1477,8 @@ class Database
      * @param stdClass $params
      *
      * @return string|mixed
+     *
+     * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function addConstraint($strTableName, $params)
     {
@@ -1663,6 +1705,8 @@ class Database
      * @param boolean $blnEscape
      *            Decide if we should escape or not
      *
+     * @throws \Exception
+     *
      * @return string Escaped value
      */
     public function _escape($val, $blnEscape = true)
@@ -1801,6 +1845,8 @@ class Database
      *
      * @param mixed $groups
      *
+     * @throws \Exception
+     *
      * @return string
      */
     protected function groups($groups)
@@ -1819,7 +1865,7 @@ class Database
         } elseif (is_string($groups)) {
             $ret .= " GROUP BY {$groups}";
         } else {
-            throw (new Exception("Error in datatype for groups " . gettype($groups), E_ERROR));
+            throw new Exception("Error in datatype for groups " . gettype($groups), E_ERROR);
         }
 
         return $ret;
@@ -1902,7 +1948,7 @@ class Database
             $params = \call_user_func([$where, "where"]);
             $ret = $this->parseClause($params);
         } else {
-            $this->_logger->warning("Failed to get where from", [$where]);
+            $this->_logger->warning("Failed to get where", [$where]);
         }
 
         return $ret;
@@ -1917,6 +1963,9 @@ class Database
      * @throws Exception
      *
      * @return string
+     *
+     * @uses PHP_DB_ENCRYPT_SALT string the salt used in the encryption algorithm
+     * @uses PHP_DB_ENCRYPT_ALGORITHM string the encryption algorithm used
      */
     public static function encrypt($data, $salt = null)
     {
@@ -1946,6 +1995,9 @@ class Database
      * @throws Exception
      *
      * @return string
+     *
+     * @uses PHP_DB_ENCRYPT_SALT string the salt used in the encryption algorithm
+     * @uses PHP_DB_ENCRYPT_ALGORITHM string the encryption algorithm used
      */
     public static function decrypt($data)
     {
