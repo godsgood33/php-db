@@ -3,7 +3,19 @@ namespace Godsgood33\Php_Db;
 
 /**
  * Class to create a where clause
- * 
+ *
+ * @property int $index Index of the current object
+ * @property string $field Name of the field to put in the clause
+ * @property mixed $value Value of the field
+ * @property float $low Low value to put in a BETWEEN clause
+ * @property float $high High value to put in a BETWEEN clause
+ * @property bool $escape Decide if you want to escape the value
+ * @property string $sqlOperator What operation do you want to compare the field value to (=, !=, <, etc)
+ * @property bool $backticks Do you want to put backticks around the field name
+ * @property bool $openParen Do you want this clause to start with an open paren
+ * @property bool $closeParen Do you want this clause to end with a close paren
+ * @property bool $caseInsensitive Is this clause supposed to be case insensitive
+ *
  * @author Ryan Prather <godsgood33@gmail.com>
  */
 class DBWhere
@@ -67,14 +79,14 @@ class DBWhere
 
     /**
      * Array to store the necessary class variables
-     * 
+     *
      * @var array
      */
     protected $data = [];
 
     /**
      * Constructor
-     * 
+     *
      * @param string $field
      * @param mixed $value
      * @param string $operator
@@ -99,11 +111,11 @@ class DBWhere
 
     /**
      * Method to return the variables
-     * 
+     *
      * @param string $var
-     * 
+     *
      * @return mixed
-     * 
+     *
      * @throws InvalidArgumentException
      */
     public function __get($var)
@@ -121,10 +133,10 @@ class DBWhere
 
     /**
      * Method to set a variable
-     * 
+     *
      * @param string $name
      * @param mixed $value
-     * 
+     *
      * @throws InvalidArgumentException
      */
     public function __set($name, $value)
