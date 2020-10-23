@@ -1,6 +1,8 @@
 <?php
 namespace Godsgood33\Php_Db;
 
+use InvalidArgumentException;
+
 /**
  * Class to create a where clause
  *
@@ -27,7 +29,7 @@ class DBWhere
      *
      * @var string
      */
-    const IN = 'IN';
+    public const IN = 'IN';
 
     /**
      * Global to represent a NOT IN statement (e.g.
@@ -35,7 +37,7 @@ class DBWhere
      *
      * @var string
      */
-    const NOT_IN = 'NOT IN';
+    public const NOT_IN = 'NOT IN';
 
     /**
      * Global to represent a BETWEEN statement (e.g.
@@ -43,7 +45,7 @@ class DBWhere
      *
      * @var string
      */
-    const BETWEEN = 'BETWEEN';
+    public const BETWEEN = 'BETWEEN';
 
     /**
      * Global to represent a LIKE statement (e.g.
@@ -51,7 +53,7 @@ class DBWhere
      *
      * @var string
      */
-    const LIKE = 'LIKE';
+    public const LIKE = 'LIKE';
 
     /**
      * Global to represent a NOT LIKE statement (e.g.
@@ -59,7 +61,7 @@ class DBWhere
      *
      * @var string
      */
-    const NOT_LIKE = 'NOT LIKE';
+    public const NOT_LIKE = 'NOT LIKE';
 
     /**
      * Global to represent an IS statement (e.g.
@@ -67,7 +69,7 @@ class DBWhere
      *
      * @var string
      */
-    const IS = 'IS';
+    public const IS = 'IS';
 
     /**
      * Global to represent an IS NOT statement (e.g.
@@ -75,7 +77,7 @@ class DBWhere
      *
      * @var string
      */
-    const IS_NOT = 'IS NOT';
+    public const IS_NOT = 'IS NOT';
 
     /**
      * Array to store the necessary class variables
@@ -125,7 +127,7 @@ class DBWhere
             'sqlOperator', 'escape', 'openParen', 'closeParen', 'caseInsensitive'
         ])) {
             $trace = \debug_backtrace();
-            throw new \InvalidArgumentException("Property not allowed via __get():  $var in {$trace[0]['file']} on line {$trace[0]['line']}", E_USER_WARNING);
+            throw new InvalidArgumentException("Property not allowed via __get():  $var in {$trace[0]['file']} on line {$trace[0]['line']}", E_USER_WARNING);
         }
 
         return $this->data[$var];
@@ -138,6 +140,8 @@ class DBWhere
      * @param mixed $value
      *
      * @throws InvalidArgumentException
+     *
+     * @return DBWhere
      */
     public function __set($name, $value)
     {
@@ -146,16 +150,20 @@ class DBWhere
             'sqlOperator', 'escape', 'openParen', 'closeParen', 'caseInsensitive'
         ])) {
             $trace = \debug_backtrace();
-            throw new \InvalidArgumentException("Property not allowed via __set():  $name in {$trace[0]['file']} on line {$trace[0]['line']}", E_USER_WARNING);
+            throw new InvalidArgumentException("Property not allowed via __set():  $name in {$trace[0]['file']} on line {$trace[0]['line']}", E_USER_WARNING);
         }
 
         $this->data[$name] = $value;
+
+        return $this;
     }
 
     /**
-     * Method to parse where clauses
+     * Method to parse where clauses and convert class to string
+     *
+     * @return string
      */
-    public function __toString()
+    public function __toString(): string
     {
         $ret = '';
 

@@ -1,11 +1,19 @@
 <?php
 namespace Godsgood33\Php_Db;
 
+use mysqli;
+use stdClass;
+use Exception;
+use InvalidArgumentException;
+
 use Monolog\Logger;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\StreamHandler;
-use Exception;
-use mysqli;
+
+use Godsgood33\Php_Db\Exceptions\MissingParams;
+use Godsgood33\Php_Db\Exceptions\ConnectError;
+use Godsgood33\Php_Db\Exceptions\MissingInterfaceAndMethods;
+use Godsgood33\Php_Db\Exceptions\QueryError;
 
 /**
  * Constant to define that we want to return an object
@@ -41,125 +49,125 @@ class Database
      *
      * @var integer
      */
-    const SELECT = 1;
+    public const SELECT = 1;
 
     /**
      * Constant defining a SELECT COUNT query
      *
      * @var integer
      */
-    const SELECT_COUNT = 2;
+    public const SELECT_COUNT = 2;
 
     /**
      * Constant defining a CREATE TABLE query
      *
      * @var integer
      */
-    const CREATE_TABLE = 3;
+    public const CREATE_TABLE = 3;
 
     /**
      * Constant defining DROP query
      *
      * @var integer
      */
-    const DROP = 4;
+    public const DROP = 4;
 
     /**
      * Constant defining DELETE query
      *
      * @var integer
      */
-    const DELETE = 5;
+    public const DELETE = 5;
 
     /**
      * Constant defining INSERT query
      *
      * @var integer
      */
-    const INSERT = 6;
+    public const INSERT = 6;
 
     /**
      * Constant defining REPLACE query
      *
      * @var integer
      */
-    const REPLACE = 7;
+    public const REPLACE = 7;
 
     /**
      * Constant defining UPDATE query
      *
      * @var integer
      */
-    const UPDATE = 8;
+    public const UPDATE = 8;
 
     /**
      * Constant defining EXTENDED INSERT query
      *
      * @var integer
      */
-    const EXTENDED_INSERT = 9;
+    public const EXTENDED_INSERT = 9;
 
     /**
      * Constant defining EXTENDED REPLACE query
      *
      * @var integer
      */
-    const EXTENDED_REPLACE = 10;
+    public const EXTENDED_REPLACE = 10;
 
     /**
      * Constant defining EXTENDED UPDATE query
      *
      * @var integer
      */
-    const EXTENDED_UPDATE = 11;
+    public const EXTENDED_UPDATE = 11;
 
     /**
      * Constant defining ALTER TABLE query
      *
      * @var integer
      */
-    const ALTER_TABLE = 12;
+    public const ALTER_TABLE = 12;
 
     /**
      * Constant defining action for alter table statement
      *
      * @var integer
      */
-    const ADD_COLUMN = 1;
+    public const ADD_COLUMN = 1;
 
     /**
      * Constant defining action for alter table statement
      *
      * @var integer
      */
-    const DROP_COLUMN = 2;
+    public const DROP_COLUMN = 2;
 
     /**
      * Constant defining action for alter table statement
      *
      * @var integer
      */
-    const MODIFY_COLUMN = 3;
+    public const MODIFY_COLUMN = 3;
 
     /**
      * Constant defining action to add a constraint
      *
      * @var integer
      */
-    const ADD_CONSTRAINT = 4;
+    public const ADD_CONSTRAINT = 4;
 
     /**
      * Constant defining a TRUNCATE TABLE query
      *
      * @var integer
      */
-    const TRUNCATE = 13;
+    public const TRUNCATE = 13;
 
     /**
      * The mysqli connection
      *
      * @access protected
-     * @var \mysqli
+     * @var mysqli
      */
     protected $_c;
 
@@ -224,13 +232,13 @@ class Database
      *
      * @param string $strLogPath
      *            [optional]
-     * @param \mysqli $dbh
+     * @param mysqli $dbh
      *            [optional]
      *            [by ref]
      *            mysqli object to perform queries.
      * @param int $intLogLevel
      *
-     * @uses PHP_DB_ENCRYPT boolean to define if the password is encrypted
+     * @uses PHP_DB_ENCRYPT bool to define if the password is encrypted
      * @uses PHP_DB_PWD string to store the password
      * @uses PHP_DB_SERVER string to store the database server name or IP
      * @uses PHP_DB_USER string to store the name of the user used to connect to the server
@@ -243,9 +251,9 @@ class Database
         if (! is_null($dbh) && is_a($dbh, 'mysqli')) {
             $this->_c = $dbh;
         } elseif (!defined('PHP_DB_SERVER') || !defined('PHP_DB_USER') || !defined('PHP_DB_PWD') || !defined('PHP_DB_SCHEMA')) {
-            throw new Exception("Please create and include a constant file with the following constants defining your DB connection (PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA)", E_USER_ERROR);
+            throw new MissingParams("Please create and include a constant file with the following constants defining your DB connection (PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA)", E_USER_ERROR);
         } elseif (defined('PHP_DB_ENCRYPT') && (!defined('PHP_DB_ENCRYPT_ALGORITHM') || !defined('PHP_DB_ENCRYPT_SALT'))) {
-            throw new Exception("Missing required PHP_DB_ENCRYPT_ALGORITHM or PHP_DB_ENCRYPT_SALT constants");
+            throw new MissingParams("Missing required PHP_DB_ENCRYPT_ALGORITHM or PHP_DB_ENCRYPT_SALT constants");
         }
 
         if (defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
@@ -257,7 +265,7 @@ class Database
         $this->_c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, $pwd, PHP_DB_SCHEMA);
 
         if ($this->_c->connect_errno) {
-            throw new Exception("Could not create database class due to error {$this->_c->connect_error}", E_ERROR);
+            throw new ConnectError("Could not create database class due to error {$this->_c->connect_error}", E_ERROR);
         }
 
         $this->_logPath = $strLogPath;
@@ -295,9 +303,9 @@ class Database
     /**
      * Function to make sure that the database is connected
      *
-     * @return boolean
+     * @return bool
      */
-    public function isConnected()
+    public function isConnected(): bool
     {
         $this->_logger->debug("Pinging server");
         return $this->_c->ping();
@@ -307,8 +315,10 @@ class Database
      * Setter function for _logger
      *
      * @param Logger $log
+     *
+     * @return bool
      */
-    public function setLogger(Logger $log)
+    public function setLogger(Logger $log): bool
     {
         $this->_logger->debug("Setting logger");
         $this->_logger = $log;
@@ -318,9 +328,9 @@ class Database
     /**
      * Getter function for _logLevel
      *
-     * @return string
+     * @return int
      */
-    public function getLogLevel()
+    public function getLogLevel(): int
     {
         $level = $this->_logLevel;
 
@@ -333,7 +343,7 @@ class Database
      *
      * @return int
      */
-    public function getQueryType()
+    public function getQueryType(): int
     {
         return $this->_queryType;
     }
@@ -342,18 +352,22 @@ class Database
      * Setter function for _queryType
      *
      * @param int $qt
+     *
+     * @return Database
      */
-    public function setQueryType($qt)
+    public function setQueryType(int $qt): Database
     {
         $this->_queryType = $qt;
+
+        return $this;
     }
 
     /**
-     * Getter function for _sql
+     * Magic method to conver the class to a string represented in the SQL query
      *
      * @return string
      */
-    public function getSql()
+    public function __toString(): string
     {
         return $this->_sql;
     }
@@ -361,7 +375,7 @@ class Database
     /**
      * Function to return the currently selected database schema
      *
-     * @return string|boolean
+     * @return string|bool
      */
     public function getSchema()
     {
@@ -371,14 +385,18 @@ class Database
             $this->_logger->debug("Getting schema {$row[0]}");
             return $row[0];
         }
+
+        return false;
     }
 
     /**
      * Function to set schema
      *
      * @param string $strSchema
+     *
+     * @return bool
      */
-    public function setSchema($strSchema)
+    public function setSchema(string $strSchema): bool
     {
         $this->_logger->debug("Setting schema to {$strSchema}");
         if (! $this->_c->select_db($strSchema)) {
@@ -394,9 +412,9 @@ class Database
      * @param string $strName
      * @param string $strVal
      *
-     * @return boolean
+     * @return bool
      */
-    public function setVar($strName, $strVal)
+    public function setVar(string $strName, ?string $strVal): bool
     {
         if (! $strName) {
             $this->_logger->debug("name is blank", [
@@ -418,22 +436,19 @@ class Database
     /**
      * Function to execute the statement
      *
-     * @param mixed $return
+     * @param int $return
      *            [optional]
      *            MYSQLI constant to control what is returned from the mysqli_result object
-     * @param string $class
-     *            [optional]
-     *            Class to use when returning object
      * @param string $strSql
      *            [optional]
      *            Optional SQL query
      *
-     * @throws \Exception
-     * @throws \InvalidArgumentException
+     * @throws QueryError
+     * @throws ConnectError
      *
      * @return mixed
      */
-    public function execute($return = MYSQLI_OBJECT, $strSql = null)
+    public function execute(int $return = MYSQLI_OBJECT, ?string $strSql = null)
     {
         if (! is_null($strSql)) {
             $this->_sql = $strSql;
@@ -444,10 +459,10 @@ class Database
 
         if (is_a($this->_c, 'mysqli')) {
             if (! $this->_c->ping()) {
-                throw new Exception("Database lost connection", E_ERROR);
+                throw new ConnectError("Database lost connection", E_ERROR);
             }
         } else {
-            throw new Exception('Database was not connected', E_ERROR);
+            throw new ConnectError('Database was not connected', E_ERROR);
         }
 
         $this->_logger->info("Executing {$this->_queryType} query");
@@ -462,20 +477,20 @@ class Database
                 if ($this->_c->error) {
                     $this->_logger->error("There is an error {$this->_c->error}");
                     $this->_logger->debug("Errored on query", [$this->_sql]);
-                    throw new Exception("There was an error {$this->_c->error}", E_ERROR);
+                    throw new QueryError("There was an error {$this->_c->error}", E_ERROR);
                 }
             } else {
                 $this->_result = $this->_c->real_query($this->_sql);
                 if ($this->_c->errno) {
                     $this->_logger->error("There was an error {$this->_c->error}");
                     $this->_logger->debug("Errored on query", [$this->_sql]);
-                    throw new Exception("There was an error {$this->_c->error}", E_ERROR);
+                    throw new QueryError("There was an error {$this->_c->error}", E_ERROR);
                 }
             }
 
             $this->_logger->debug("Checking for query results");
             $this->_result = $this->checkResults($return);
-        } catch (Exception $e) {
+        } catch (QueryError $e) {
             $this->_logger->error($e);
         }
 
@@ -491,7 +506,7 @@ class Database
      *
      * @return mixed
      */
-    protected function checkResults($returnType)
+    protected function checkResults(int $returnType)
     {
         $res = null;
 
@@ -565,15 +580,15 @@ class Database
      *            [optional]
      *            Optional query to pass in and execute
      *
-     * @return \mysqli_result|boolean
+     * @return mysqli_result|bool
      */
-    public function query($strSql = null)
+    public function query(?string $strSql = null)
     {
         if (is_null($strSql)) {
             return $this->_c->query($this->_sql);
-        } else {
-            return $this->_c->query($strSql);
         }
+
+        return $this->_c->query($strSql);
     }
 
     /**
@@ -594,12 +609,13 @@ class Database
      * @see Database::flags()
      *
      * @throws Exception
+     * @throws InvalidArgumentException
      *
      * @return mixed
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function select($strTableName, $fields = null, $arrWhere = [], $arrFlags = [])
+    public function select(string $strTableName, $fields = null, ?array $arrWhere = [], ?array $arrFlags = [])
     {
         $this->_sql = null;
         $this->_queryType = self::SELECT;
@@ -611,7 +627,7 @@ class Database
             $this->_sql = "SELECT " . $this->fields($fields) . " FROM $strTableName";
         } else {
             $this->_logger->emergency("Table name is invalid or wrong type", [debug_backtrace()]);
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (isset($arrFlags['joins']) && is_array($arrFlags['joins']) && count($arrFlags['joins'])) {
@@ -665,11 +681,13 @@ class Database
      *
      * @see Database::flags()
      *
-     * @return string|NULL
+     * @return int|NULL
+     *
+     * @throws InvalidArgumentException
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function selectCount($strTableName, $arrWhere = [], $arrFlags = [])
+    public function selectCount(string $strTableName, ?array $arrWhere = [], ?array $arrFlags = [])
     {
         $this->_sql = null;
         $this->_queryType = self::SELECT_COUNT;
@@ -678,7 +696,7 @@ class Database
             $this->_sql = "SELECT COUNT(1) AS 'count' FROM $strTableName";
         } else {
             $this->_logger->emergency("Table name is invalid or wrong type", [debug_backtrace()]);
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (isset($arrFlags['joins']) && is_array($arrFlags['joins'])) {
@@ -717,13 +735,16 @@ class Database
      *
      * @param string $strTableName
      * @param array|string $arrParams
-     * @param boolean $blnToIgnore
+     * @param bool $blnToIgnore
      *
      * @return string|NULL
      *
+     * @throws InvalidArgumentException
+     * @throws MissingInterfaceAndMethods
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function insert($strTableName, $arrParams = null, $blnToIgnore = false)
+    public function insert(string $strTableName, $arrParams = null, bool $blnToIgnore = false)
     {
         $this->_sql = null;
         $this->_queryType = self::INSERT;
@@ -731,7 +752,7 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "INSERT" . ($blnToIgnore ? " IGNORE" : "") . " INTO {$strTableName}";
         } else {
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -745,16 +766,16 @@ class Database
         } elseif (is_string($arrParams) && strpos(strtolower($arrParams), 'select') !== false) {
             $this->_sql .= " {$arrParams}";
         } elseif (is_object($arrParams)) {
-            $interfaces = \class_implements($arrParams);
+            $interfaces = class_implements($arrParams);
             if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::insert")) {
-                $params = \call_user_func([$arrParams, "insert"]);
+                $params = call_user_func([$arrParams, "insert"]);
                 $this->_sql .= " (`" . implode("`,`", array_keys($params)) . "`) VALUES ";
                 $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
             } else {
-                throw new Exception("Object does not implement the DBInterface interface and methods");
+                throw new MissingInterfaceAndMethods("Object does not implement the DBInterface interface and methods");
             }
         } else {
-            throw new Exception("Invalid type passed to insert " . gettype($arrParams));
+            throw new InvalidArgumentException("Invalid type passed to insert " . gettype($arrParams));
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -773,15 +794,19 @@ class Database
      *            An array of field names that each value represents
      * @param array|string $params
      *            An array of array of values or a string with a SELECT statement to populate the insert with
-     * @param boolean $blnToIgnore
+     * @param bool $blnToIgnore
      *            [optional]
      *            Boolean to decide if we need to use the INSERT IGNORE INTO syntax
      *
      * @return NULL|string Returns the SQL if self::$autorun is set to false, else it returns the output from running.
      *
+     * @throws InvalidArgumentException
+     * @throws MissingParams
+     * @throws MissingInterfaceAndMethods
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function extendedInsert($strTableName, $arrFields, $params, $blnToIgnore = false)
+    public function extendedInsert(string $strTableName, array $arrFields, $params, bool $blnToIgnore = false)
     {
         $this->_sql = null;
         $this->_queryType = self::EXTENDED_INSERT;
@@ -789,7 +814,7 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "INSERT " . ($blnToIgnore ? "IGNORE " : "") . "INTO $strTableName " . "(`" . implode("`,`", $arrFields) . "`)";
         } else {
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (is_array($params) && count($params)) {
@@ -801,7 +826,7 @@ class Database
                             $p,
                             debug_backtrace()
                         ]);
-                        throw new Exception("Inconsistent number of fields in fields and values in extendedInsert " . print_r($p, true));
+                        throw new MissingParams("Inconsistent number of fields in fields and values in extendedInsert " . print_r($p, true));
                     }
                     $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($p))) . ")";
 
@@ -810,15 +835,15 @@ class Database
                     }
                 }
             } elseif (isset($params[0]) && is_object($params[0])) {
-                $interfaces = \class_implements($params[0]);
+                $interfaces = class_implements($params[0]);
                 if (!in_array("Godsgood33\Php_Db\DBInterface", $interfaces)) {
-                    throw new Exception("Object does not implement DBInterface interface and methods");
+                    throw new MissingInterfaceAndMethods("Object does not implement DBInterface interface and methods");
                 }
                 foreach ($params as $param) {
                     if (!is_callable(get_class($param) . "::insert")) {
-                        throw new Exception("Cannot call insert method");
+                        throw new MissingInterfaceAndMethods("Cannot call insert method");
                     }
-                    $key_value = \call_user_func([$param, "insert"]);
+                    $key_value = call_user_func([$param, "insert"]);
                     $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($key_value))) . "),";
                 }
                 $this->_sql = substr($this->_sql, 0, -1);
@@ -826,7 +851,7 @@ class Database
                 $this->_sql .= "(" . implode("),(", array_map([$this, '_escape'], array_values($params))) . ")";
             }
         } else {
-            throw new Exception("Invalid param type");
+            throw new InvalidArgumentException("Invalid param type");
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -854,9 +879,13 @@ class Database
      *
      * @return NULL|string
      *
+     * @throws InvalidArgumentException
+     * @throws MissingParams
+     * @throws MissingInterfaceAndMethods
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function update($strTableName, $arrParams, $arrWhere = [], $arrFlags = [])
+    public function update(string $strTableName, array $arrParams, ?array $arrWhere = [], ?array $arrFlags = [])
     {
         $this->_sql = "UPDATE ";
         $this->_queryType = self::UPDATE;
@@ -871,7 +900,7 @@ class Database
 
             $this->_sql .= " SET ";
         } else {
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -893,9 +922,9 @@ class Database
                 }
             }
         } elseif (is_object($arrParams)) {
-            $interfaces = \class_implements($arrParams);
+            $interfaces = class_implements($arrParams);
             if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::update")) {
-                $params = \call_user_func([$arrParams, "update"]);
+                $params = call_user_func([$arrParams, "update"]);
                 $fields = array_keys($params);
                 $values = array_map([$this, '_escape'], array_values($params));
                 foreach ($fields as $x => $f) {
@@ -905,10 +934,10 @@ class Database
                     $this->_sql .= "`{$f}`={$values[$x]}";
                 }
             } else {
-                throw new Exception("Params is an object that doesn't implement DBInterface");
+                throw new MissingInterfaceAndMethods("Params is an object that doesn't implement DBInterface");
             }
         } else {
-            throw new Exception("No fields to update");
+            throw new MissingParams("No fields to update");
         }
 
         $where = $this->parseClause($arrWhere);
@@ -953,9 +982,11 @@ class Database
      *
      * @return mixed
      *
+     * @throws InvalidArgumentException
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function extendedUpdate($strTableToUpdate, $strOriginalTable, $strLinkField, $arrParams)
+    public function extendedUpdate(string $strTableToUpdate, string $strOriginalTable, string $strLinkField, array $arrParams)
     {
         $this->_sql = "UPDATE ";
         $this->_queryType = self::EXTENDED_UPDATE;
@@ -963,7 +994,7 @@ class Database
         if (! is_null($strTableToUpdate) && ! is_null($strOriginalTable) && ! is_null($strLinkField)) {
             $this->_sql .= "$strTableToUpdate tbu INNER JOIN $strOriginalTable o USING ($strLinkField) SET ";
         } else {
-            throw new Exception("Missing necessary fields");
+            throw new InvalidArgumentException("Missing necessary fields");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -976,7 +1007,7 @@ class Database
         } elseif (is_string($arrParams)) {
             $this->_sql .= "tbu.`$arrParams` = o.`$arrParams`";
         } else {
-            throw new Exception("Do not understand datatype " . gettype($arrParams), E_ERROR);
+            throw new InvalidArgumentException("Do not understand datatype " . gettype($arrParams), E_ERROR);
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -998,7 +1029,7 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function replace($strTableName, $arrParams)
+    public function replace(string $strTableName, array $arrParams)
     {
         $this->_sql = null;
         $this->_queryType = self::REPLACE;
@@ -1006,7 +1037,7 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "REPLACE INTO $strTableName ";
         } else {
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -1021,7 +1052,7 @@ class Database
         } elseif (is_object($arrParams)) {
             $interfaces = class_implements($arrParams);
             if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::replace")) {
-                $params = \call_user_func([$arrParams, "replace"]);
+                $params = call_user_func([$arrParams, "replace"]);
                 $this->_sql .= "(`" . implode("`,`", array_keys($params)) . "`) VALUES ";
                 $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
             }
@@ -1046,21 +1077,23 @@ class Database
      *
      * @return NULL|string
      *
+     * @throws InvalidArgumentException
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function extendedReplace($strTableName, $arrFields, $arrParams)
+    public function extendedReplace(string $strTableName, array $arrFields, array $arrParams)
     {
         $this->_sql = null;
         $this->_queryType = self::EXTENDED_REPLACE;
 
         if (! is_array($arrFields) || ! count($arrFields)) {
-            throw new Exception("Error with the field type");
+            throw new InvalidArgumentException("Error with the field type");
         }
 
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "REPLACE INTO $strTableName " . "(`" . implode("`,`", $arrFields) . "`)";
         } else {
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -1103,9 +1136,11 @@ class Database
      *
      * @return string|NULL
      *
+     * @throws InvalidArgumentException
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function delete($strTableName, $arrFields = [], $arrWhere = [], $arrJoins = [])
+    public function delete(string $strTableName, ?array $arrFields = [], ?array $arrWhere = [], ?array $arrJoins = [])
     {
         $this->_sql = "DELETE";
         $this->_queryType = self::DELETE;
@@ -1119,7 +1154,7 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql .= " FROM $strTableName";
         } else {
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (! is_null($arrJoins) && is_array($arrJoins) && count($arrJoins)) {
@@ -1157,15 +1192,17 @@ class Database
      * @param string $strType
      *            [optional]
      *            Type of item to drop ('table', 'view') (defaulted to 'table')
-     * @param boolean $blnIsTemp
+     * @param bool $blnIsTemp
      *            [optional]
-     *            Optional boolean if this is a temporary table
+     *            Optional bool if this is a temporary table
      *
      * @return string|NULL
      *
+     * @throws InvalidArgumentException
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function drop($strTableName, $strType = 'table', $blnIsTemp = false)
+    public function drop(string $strTableName, string $strType = 'table', bool $blnIsTemp = false)
     {
         $this->_sql = null;
         $this->_queryType = self::DROP;
@@ -1178,13 +1215,13 @@ class Database
                 $strType = 'VIEW';
                 break;
             default:
-                throw new Exception("Invalid type " . gettype($strType), E_ERROR);
+                throw new InvalidArgumentException("Invalid type " . gettype($strType), E_ERROR);
         }
 
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "DROP" . ($blnIsTemp ? " TEMPORARY" : "") . " $strType IF EXISTS `{$strTableName}`";
         } else {
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -1200,13 +1237,13 @@ class Database
      * @param string $strTableName
      *            Table to truncate
      *
-     * @throws Exception
-     *
      * @return string|NULL
+     *
+     * @throws InvalidArgumentException
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function truncate($strTableName)
+    public function truncate(string $strTableName)
     {
         $this->_sql = null;
         $this->_queryType = self::TRUNCATE;
@@ -1214,7 +1251,7 @@ class Database
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "TRUNCATE TABLE $strTableName";
         } else {
-            throw new Exception("Table name is invalid");
+            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -1229,9 +1266,9 @@ class Database
      *
      * @param string $strTableName
      *            Name to give the table when creating
-     * @param boolean $blnIsTemp
+     * @param bool $blnIsTemp
      *            [optional]
-     *            Optional boolean to make the table a temporary table
+     *            Optional bool to make the table a temporary table
      * @param mixed $strSelect
      *            [optional]
      *            Optional parameter if null uses last built statement
@@ -1242,7 +1279,7 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function createTable($strTableName, $blnIsTemp = false, $strSelect = null)
+    public function createTable(string $strTableName, bool $blnIsTemp = false, $strSelect = null)
     {
         $this->_queryType = self::CREATE_TABLE;
 
@@ -1277,16 +1314,24 @@ class Database
     /**
      * Function to create a table using a stdClass object derived from JSON
      *
-     * @param \stdClass $json
+     * @param stdClass $json
+     * @param bool $blnDropFirst bool to decide if you want to drop the table first
      *
      * @example /examples/create_table_json.json
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function createTableJson($json)
+    public function createTableJson($json, bool $blnDropFirst = false)
     {
         $this->_queryType = self::CREATE_TABLE;
         $this->_c->select_db($json->schema);
+
+        if($blnDropFirst) {
+            $this->drop($json->name);
+            if(!defined('PHP_DB_AUTORUN') || !PHP_DB_AUTORUN) {
+                $this->execute();
+            }
+        }
 
         $this->_sql = "CREATE TABLE IF NOT EXISTS `{$json->name}` (";
         foreach ($json->fields as $field) {
@@ -1364,20 +1409,22 @@ class Database
      * Method to add a column to the database (only one at a time!)
      *
      * @param string $strTableName
-     * @param \stdClass $params
+     * @param stdClass $params
      *
      * @return string|mixed
      *
+     * @throws InvalidArgumentException
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function addColumn($strTableName, $params)
+    public function addColumn(string $strTableName, stdClass $params)
     {
         $this->_queryType = self::ALTER_TABLE;
         $this->_sql = "ALTER TABLE {$strTableName} ADD COLUMN";
 
         if (!self::checkObject($params, ['name', 'dataType'])) {
             $this->_logger->error("Missing elements for the addColumn method (need 'name', 'dataType')", [$params]);
-            throw new \Exception("Missing elements for the addColumn method");
+            throw new InvalidArgumentException("Missing elements for the addColumn method");
         }
 
         $nn = (isset($params->nn) && $params->nn ? " NOT NULL" : "");
@@ -1406,7 +1453,7 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function dropColumn($strTableName, $params)
+    public function dropColumn(string $strTableName, $params)
     {
         $this->_queryType = self::ALTER_TABLE;
         $this->_sql = "ALTER TABLE {$strTableName} DROP COLUMN";
@@ -1438,6 +1485,8 @@ class Database
      *
      * @return string|mixed
      *
+     * @throws InvalidArgumentException
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function modifyColumn($strTableName, $params)
@@ -1447,7 +1496,7 @@ class Database
 
         if (!self::checkObject($params, ['name', 'dataType'])) {
             $this->_logger->error("Missing elements to the modifyColumn method (need 'name' and 'dataType')", [$params]);
-            throw new \Exception("Missing elements to the modifyColumn method");
+            throw new InvalidArgumentException("Missing elements to the modifyColumn method");
         }
 
         if (!isset($params->new_name)) {
@@ -1478,6 +1527,8 @@ class Database
      *
      * @return string|mixed
      *
+     * @throws InvalidArgumentException
+     *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
     public function addConstraint($strTableName, $params)
@@ -1487,22 +1538,22 @@ class Database
 
         if (!is_a($params, 'stdClass')) {
             $this->_logger->critical("Error in reading constraint field");
-            throw new \Exception("Error in reading constraint field");
+            throw new InvalidArgumentException("Error in reading constraint field");
         }
 
         if (!self::checkObject($params, ['id', 'local', 'schema', 'table', 'field', 'delete', 'update'])) {
             $this->_logger->error("Missing elements in the addConstraint method (need 'id', 'local', 'schema', 'table', 'field', 'delete', 'update')", [$params]);
-            throw new \Exception("There are some missing elements for the addConstraint action");
+            throw new InvalidArgumentException("There are some missing elements for the addConstraint action");
         }
 
         if (!in_array(strtoupper($params->delete), ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])) {
             $this->_logger->error("Invalid action for deletion on addConstraint");
-            throw new \Exception("Invalid action for deletion on addConstraint");
+            throw new InvalidArgumentException("Invalid action for deletion on addConstraint");
         }
 
         if (!in_array(strtoupper($params->update), ['CASCADE', 'SET NULL', 'RESTRICT', 'NO ACTION'])) {
             $this->_logger->error("Invalid action for update on addConstraint");
-            throw new Exception("Invalid action for update on addConstraint");
+            throw new InvalidArgumentException("Invalid action for update on addConstraint");
         }
 
         if (is_array($params->field) && is_array($params->local)) {
@@ -1512,7 +1563,7 @@ class Database
             $field = "`{$params->field}`";
             $local = "`{$params->local}`";
         } else {
-            throw new Exception("Invalid type for the field and local values both must be an array or string");
+            throw new InvalidArgumentException("Invalid type for the field and local values both must be an array or string");
         }
         $this->_sql .= " `{$params->id}` FOREIGN KEY ({$local}) REFERENCES `{$params->schema}`.`{$params->table}` ({$field}) ON DELETE {$params->delete} ON UPDATE {$params->update}";
 
@@ -1531,9 +1582,9 @@ class Database
      * @param string $strFieldName
      *            Field name to find
      *
-     * @return boolean Returns TRUE if field is found in that schema and table, otherwise FALSE
+     * @return bool Returns TRUE if field is found in that schema and table, otherwise FALSE
      */
-    public function fieldExists($strTableName, $strFieldName)
+    public function fieldExists(string $strTableName, string $strFieldName): bool
     {
         $fdata = $this->fieldData($strTableName);
 
@@ -1557,9 +1608,9 @@ class Database
      *            [optional]
      *            Optional field to retrieve data (if null, returns data from all fields)
      *
-     * @return array
+     * @return mixed
      */
-    public function fieldData($strTableName, $field = null)
+    public function fieldData(string $strTableName, $field = null)
     {
         if (is_null($field)) {
             $res = $this->_c->query("SELECT * FROM $strTableName LIMIT 1");
@@ -1586,14 +1637,14 @@ class Database
     /**
      * Function to check that all field parameters are set correctly
      *
-     * @param object $field_data
-     * @param object $check
+     * @param stdClass $field_data
+     * @param stdClass $check
      * @param array $pks
-     * @param object $index
+     * @param stdClass $index
      *
      * @return array|string
      */
-    public function fieldCheck($field_data, $check, $pks, $index)
+    public function fieldCheck(stdClass $field_data, stdClass $check, array $pks, stdClass $index)
     {
         $default = null;
         $ret = null;
@@ -1655,13 +1706,15 @@ class Database
      * @param string $strTableName
      *            Table to search for
      *
-     * @return integer|boolean Returns number of tables that match if table is found in that schema, otherwise FALSE
+     * @return integer|bool Returns number of tables that match if table is found in that schema, otherwise FALSE
+     *
+     * @throws InvalidArgumentException
      */
     public function tableExists($strSchema, $strTableName)
     {
         if (! $this->_c->select_db($strSchema)) {
             $this->_logger->error("Schema {$strSchema} not found", [$this->_c->error]);
-            throw new Exception("Error connecting to schema {$strSchema}");
+            throw new InvalidArgumentException("Error connecting to schema {$strSchema}");
         }
 
         if (preg_match("/[^A-Za-z0-9_%\-]/i", $strTableName)) {
@@ -1689,9 +1742,9 @@ class Database
      *
      * @param string $strVal
      *
-     * @return boolean
+     * @return bool
      */
-    public function isJson($strVal)
+    public function isJson($strVal): bool
     {
         json_decode($strVal);
         return (json_last_error() == JSON_ERROR_NONE);
@@ -1702,14 +1755,15 @@ class Database
      *
      * @param mixed $val
      *            Value to escape
-     * @param boolean $blnEscape
+     * @param bool $blnEscape
      *            Decide if we should escape or not
      *
-     * @throws \Exception
+     * @throws Exception
+     * @throws InvalidArgumentException
      *
      * @return string Escaped value
      */
-    public function _escape($val, $blnEscape = true)
+    public function _escape($val, bool $blnEscape = true): string
     {
         if (is_null($val) || (is_string($val) && strtolower($val) == 'null')) {
             return 'NULL';
@@ -1735,14 +1789,14 @@ class Database
                 $val,
                 '_escape'
             ]);
-            if ($ret !== false) {
+            if ($ret !== false && is_string($ret)) {
                 return $ret;
             } else {
                 throw new Exception("Error in return from _escape method in " . get_class($val), E_ERROR);
             }
         }
 
-        throw new Exception("Unknown datatype to escape in SQL string {$this->_sql} " . gettype($val), E_ERROR);
+        throw new InvalidArgumentException("Unknown datatype to escape in SQL string {$this->_sql} " . gettype($val), E_ERROR);
     }
 
     /**
@@ -1753,8 +1807,10 @@ class Database
      *            Optional array of fields to string together to create a field list
      *
      * @return string
+     *
+     * @throws InvalidArgumentException
      */
-    protected function fields($fields = null)
+    protected function fields($fields = null): string
     {
         $ret = null;
 
@@ -1766,13 +1822,13 @@ class Database
                     $ret .= "$field,";
                 }
             }
-            $ret = substr($ret, - 1) == ',' ? substr($ret, 0, - 1) : $ret;
+            $ret = substr($ret, -1) == ',' ? substr($ret, 0, -1) : $ret;
         } elseif (is_string($fields)) {
             $ret = $fields;
         } elseif (is_null($fields)) {
             $ret = "*";
         } else {
-            throw new \InvalidArgumentException("Invalid field type");
+            throw new InvalidArgumentException("Invalid field type");
         }
 
         return $ret;
@@ -1786,9 +1842,6 @@ class Database
      *
      *            <code>
      *            [
-     *            &nbsp;&nbsp;'joins' => [
-     *            &nbsp;&nbsp;&nbsp;&nbsp;"JOIN table2 t2 ON t2.id=t1.id"
-     *            &nbsp;&nbsp;],
      *            &nbsp;&nbsp;'group' => 'field',
      *            &nbsp;&nbsp;'having' => 'field',
      *            &nbsp;&nbsp;'order' => 'field',
@@ -1803,7 +1856,7 @@ class Database
      *
      * @return string
      */
-    protected function flags($arrFlags)
+    protected function flags(array $arrFlags)
     {
         $ret = '';
 
@@ -1845,11 +1898,11 @@ class Database
      *
      * @param mixed $groups
      *
-     * @throws \Exception
-     *
      * @return string
+     *
+     * @throws InvalidArgumentException
      */
-    protected function groups($groups)
+    protected function groups($groups): string
     {
         $ret = '';
         if (is_array($groups) && count($groups)) {
@@ -1865,7 +1918,7 @@ class Database
         } elseif (is_string($groups)) {
             $ret .= " GROUP BY {$groups}";
         } else {
-            throw new Exception("Error in datatype for groups " . gettype($groups), E_ERROR);
+            throw new InvalidArgumentException("Error in datatype for groups " . gettype($groups), E_ERROR);
         }
 
         return $ret;
@@ -1877,8 +1930,10 @@ class Database
      * @param mixed $order
      *
      * @return string
+     *
+     * @throws InvalidArgumentException
      */
-    protected function order($order)
+    protected function order($order): string
     {
         $ret = '';
         if (is_array($order)) {
@@ -1893,6 +1948,8 @@ class Database
             }
         } elseif (is_string($order)) {
             $ret .= " ORDER BY {$order}";
+        } else {
+            throw new InvalidArgumentException("Error in datatype for order method ".gettype($order), E_ERROR);
         }
 
         return $ret;
@@ -1901,11 +1958,13 @@ class Database
     /**
      * Function to see if a constraint exists
      *
+     *
+     *
      * @param string $strConstraintId
      *
-     * @return boolean
+     * @return bool
      */
-    public function isConstraint($strConstraintId)
+    public function isConstraint($strConstraintId): bool
     {
         $res = $this->_c->query("SELECT * FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_NAME = '{$strConstraintId}'");
 
@@ -1921,14 +1980,14 @@ class Database
      *
      * @param DBWhere|array:DBWhere $where
      *
-     * @return boolean|array:DBWhere
+     * @return bool|array:DBWhere
      */
     public function parseClause($where)
     {
         $ret = [];
         $interfaces = [];
         if (is_object($where)) {
-            $interfaces = \class_implements($where);
+            $interfaces = class_implements($where);
         }
         if (is_array($where)) {
             foreach ($where as $k => $w) {
@@ -1945,7 +2004,7 @@ class Database
             $where->value = $v;
             $ret[] = $where;
         } elseif (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($where) . "::where")) {
-            $params = \call_user_func([$where, "where"]);
+            $params = call_user_func([$where, "where"]);
             $ret = $this->parseClause($params);
         } else {
             $this->_logger->warning("Failed to get where", [$where]);
@@ -1958,16 +2017,16 @@ class Database
      * Encryption algorithm
      *
      * @param string $data
-     * @param string $key
-     *
-     * @throws Exception
+     * @param string $salt
      *
      * @return string
+     *
+     * @throws Exception
      *
      * @uses PHP_DB_ENCRYPT_SALT string the salt used in the encryption algorithm
      * @uses PHP_DB_ENCRYPT_ALGORITHM string the encryption algorithm used
      */
-    public static function encrypt($data, $salt = null)
+    public static function encrypt(string $data, ?string $salt = null)
     {
         if (!defined('PHP_DB_ENCRYPT_SALT') || !defined('PHP_DB_ENCRYPT_ALGORITHM')) {
             throw new Exception("Need to declare and populate PHP_DB_ENCRYPT_SALT and PHP_DB_ENCRYPT_ALGORITHM");
@@ -1992,14 +2051,14 @@ class Database
      *
      * @param string $data
      *
-     * @throws Exception
-     *
      * @return string
+     *
+     * @throws Exception
      *
      * @uses PHP_DB_ENCRYPT_SALT string the salt used in the encryption algorithm
      * @uses PHP_DB_ENCRYPT_ALGORITHM string the encryption algorithm used
      */
-    public static function decrypt($data)
+    public static function decrypt(string $data)
     {
         if (!defined('PHP_DB_ENCRYPT_SALT') || !defined('PHP_DB_ENCRYPT_ALGORITHM')) {
             throw new Exception("Need to declare and populate PHP_DB_ENCRYPT_SALT and PHP_DB_ENCRYPT_ALGORITHM");
@@ -2020,9 +2079,9 @@ class Database
      * @param object $object
      * @param array:string $requiredFields
      *
-     * @return boolean
+     * @return bool
      */
-    public static function checkObject($object, $requiredFields)
+    public static function checkObject($object, $requiredFields): bool
     {
         $haystack = array_keys(json_decode(json_encode($object), true));
         foreach ($requiredFields as $r) {
@@ -2039,7 +2098,7 @@ class Database
      *
      * @return string
      */
-    public function error()
+    public function error(): string
     {
         return $this->_c->error;
     }
