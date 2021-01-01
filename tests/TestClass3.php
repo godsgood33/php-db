@@ -1,5 +1,7 @@
 <?php
 
+use Godsgood33\Php_Db\DBWhere;
+
 class TestClass3 implements Godsgood33\Php_Db\DBInterface
 {
     public function insert() : array
@@ -27,7 +29,7 @@ class TestClass3 implements Godsgood33\Php_Db\DBInterface
         ];
     }
 
-    public function where()
+    public function where(): DBWhere
     {
         $where = new Godsgood33\Php_Db\DBWhere('foo', 'bar');
         return $where;

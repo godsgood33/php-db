@@ -1,5 +1,7 @@
 <?php
 
+use Godsgood33\Php_Db\DBWhere;
+
 class TestClass4 implements \Godsgood33\Php_Db\DBInterface
 {
     public function _escape()
@@ -32,7 +34,7 @@ class TestClass4 implements \Godsgood33\Php_Db\DBInterface
         ];
     }
 
-    public function where()
+    public function where(): DBWhere
     {
         return false;
     }

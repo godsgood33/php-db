@@ -1,8 +1,13 @@
 <?php
+
 use Godsgood33\Php_Db\Database;
 use Godsgood33\Php_Db\DBCreateTable;
 use Godsgood33\Php_Db\DBWhere;
-use Monolog\Logger;
+use Godsgood33\Php_Db\DBConst;
+use Godsgood33\Php_Db\Exceptions\MissingInterfaceAndMethods;
+use Godsgood33\Php_Db\Exceptions\MissingParams;
+use Godsgood33\Php_Db\Exceptions\QueryError;
+
 use PHPUnit\Framework\TestCase;
 
 require_once 'TestClass.php'; // class with _escape method
@@ -38,6 +43,7 @@ final class DatabaseTest extends TestCase
 
     public function testSetVarNullName()
     {
+        $this->expectException(TypeError::class);
         $ret = $this->db->setVar(null, null);
         $this->assertFalse($ret);
     }
@@ -50,8 +56,8 @@ final class DatabaseTest extends TestCase
 
     public function testSetSchemaWithNonExistentSchema()
     {
-        $ret = $this->db->setSchema("george");
-        $this->assertFalse($ret);
+        $this->expectException(QueryError::class);
+        $this->db->setSchema("george");
     }
 
     public function testDatabaseConnection()
@@ -88,7 +94,7 @@ final class DatabaseTest extends TestCase
         $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
 
         $this->db->createTableJson($json->tables[0]);
-        $this->assertEquals("CREATE TABLE IF NOT EXISTS `settings` (`id` int(11) AUTO_INCREMENT NOT NULL,`meta_key` varchar(100) NOT NULL,`meta_value` mediumtext DEFAULT NULL, UNIQUE(`meta_key`), PRIMARY KEY(`id`))", $this->db->getSql());
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS `settings` (`id` int(11) AUTO_INCREMENT NOT NULL,`meta_key` varchar(100) NOT NULL,`meta_value` mediumtext DEFAULT NULL, UNIQUE(`meta_key`), PRIMARY KEY(`id`))", (string) $this->db);
 
         $this->assertTrue($this->db->execute());
     }
@@ -98,7 +104,7 @@ final class DatabaseTest extends TestCase
         $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
 
         $this->db->createTableJson($json->tables[1]);
-        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test` (`id` int(11) AUTO_INCREMENT NOT NULL,`fk` int(11) NOT NULL,`default` tinyint(1) DEFAULT '0',`enum` enum('1','2') DEFAULT '1', INDEX `default_idx` (`default`), PRIMARY KEY(`id`,`fk`))", $this->db->getSql());
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test` (`id` int(11) AUTO_INCREMENT NOT NULL,`fk` int(11) NOT NULL,`default` tinyint(1) DEFAULT '0',`enum` enum('1','2') DEFAULT '1', INDEX `default_idx` (`default`), PRIMARY KEY(`id`,`fk`))", (string) $this->db);
 
         $this->assertTrue($this->db->execute());
     }
@@ -108,14 +114,14 @@ final class DatabaseTest extends TestCase
         $json = json_decode(file_get_contents(dirname(dirname(__FILE__)) . "/examples/create_table_json.json"));
 
         $this->db->createTableJson($json->tables[2]);
-        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test2` (`id` int(11) AUTO_INCREMENT NOT NULL, PRIMARY KEY(`id`))", $this->db->getSql());
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS `test2` (`id` int(11) AUTO_INCREMENT NOT NULL, PRIMARY KEY(`id`))", (string) $this->db);
 
         $this->assertTrue($this->db->execute());
     }
 
     public function testSelectWithInvalidTableName()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->select(new stdClass());
     }
 
@@ -123,14 +129,14 @@ final class DatabaseTest extends TestCase
     {
         // query table with NO parameters
         $this->db->select("test");
-        $this->assertEquals("SELECT * FROM test", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test", (string) $this->db);
     }
 
     public function testSelectWithNullFieldParameter()
     {
         // query table with null fields parameter
         $this->db->select("test", null);
-        $this->assertEquals("SELECT * FROM test", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test", (string) $this->db);
     }
 
     public function testSelectWithOneArrayParameter()
@@ -139,7 +145,7 @@ final class DatabaseTest extends TestCase
         $this->db->select("test", [
             'id'
         ]);
-        $this->assertEquals("SELECT `id` FROM test", $this->db->getSql());
+        $this->assertEquals("SELECT `id` FROM test", (string) $this->db);
     }
 
     public function testSelectWithTwoArrayParameters()
@@ -149,14 +155,14 @@ final class DatabaseTest extends TestCase
             'id',
             'name'
         ]);
-        $this->assertEquals("SELECT `id`,`name` FROM test", $this->db->getSql());
+        $this->assertEquals("SELECT `id`,`name` FROM test", (string) $this->db);
     }
 
     public function testSelectWithOneStringParameter()
     {
         // query table with string parameter
         $this->db->select("test", 'id');
-        $this->assertEquals("SELECT id FROM test", $this->db->getSql());
+        $this->assertEquals("SELECT id FROM test", (string) $this->db);
     }
 
     public function testSelectWithStdClassParameter()
@@ -164,29 +170,29 @@ final class DatabaseTest extends TestCase
         $this->expectException(Exception::class);
         // query table with object parameter
         $this->db->select("test", new stdClass());
-        $this->assertEquals("SELECT  FROM test", $this->db->getSql());
+        $this->assertEquals("SELECT  FROM test", (string) $this->db);
     }
 
     public function testSelectWithNullWhereParameter()
     {
         // query table with null where parameter
         $this->db->select("test", 'id', null);
-        $this->assertEquals("SELECT id FROM test", $this->db->getSql());
+        $this->assertEquals("SELECT id FROM test", (string) $this->db);
     }
 
     public function testSelectWithEmptyArrayWhereParameter()
     {
         // query table with empty array where paramter
         $this->db->select("test", 'id', []);
-        $this->assertEquals("SELECT id FROM test", $this->db->getSql());
+        $this->assertEquals("SELECT id FROM test", (string) $this->db);
     }
 
     public function testSelectWithImcompleteWhereArrayParameter()
     {
         $where = new DBWhere('id');
         // query with incomplete WHERE clause
-        $this->db->select("test", 'id', $where);
-        $this->assertEquals("SELECT id FROM test WHERE `id` = NULL", $this->db->getSql());
+        $this->db->select("test", 'id', [$where]);
+        $this->assertEquals("SELECT id FROM test WHERE `id` = NULL", (string) $this->db);
     }
 
     public function testSelectWithMultipleWhereClauses()
@@ -194,7 +200,7 @@ final class DatabaseTest extends TestCase
         $where1 = new DBWhere("name", "Frank");
         $where2 = new DBWhere("state", "IN");
         $this->db->select("test", null, [$where1, $where2]);
-        $this->assertEquals("SELECT * FROM test WHERE `name` = 'Frank' AND `state` = 'IN'", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test WHERE `name` = 'Frank' AND `state` = 'IN'", (string) $this->db);
     }
 
     public function testSelectWithGroupByFlag()
@@ -202,7 +208,7 @@ final class DatabaseTest extends TestCase
         $this->db->select('test', null, [], [
             'group' => 'state'
         ]);
-        $this->assertEquals("SELECT * FROM test GROUP BY state", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test GROUP BY state", (string) $this->db);
     }
 
     public function testSelectWithGroupByArrayFlag()
@@ -210,7 +216,7 @@ final class DatabaseTest extends TestCase
         $this->db->select("test", null, [], [
             'group' => ['lname', 'state']
         ]);
-        $this->assertEquals("SELECT * FROM test GROUP BY lname, state", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test GROUP BY lname, state", (string) $this->db);
     }
 
     public function testSelectWithGroupByObject()
@@ -226,7 +232,7 @@ final class DatabaseTest extends TestCase
         $this->db->select("test", null, [], [
             'order' => 'lname'
         ]);
-        $this->assertEquals("SELECT * FROM test ORDER BY lname", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test ORDER BY lname", (string) $this->db);
     }
 
     public function testSelectWithOrderByArrayFlag()
@@ -234,7 +240,7 @@ final class DatabaseTest extends TestCase
         $this->db->select('test', null, [], [
             'order' => [['field' => 'lname', 'sort' => 'ASC'], ['field' => 'state', 'sort' => 'DESC']]
         ]);
-        $this->assertEquals("SELECT * FROM test ORDER BY lname ASC, state DESC", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test ORDER BY lname ASC, state DESC", (string) $this->db);
     }
 
     public function testSelectWithHavingFlag()
@@ -245,7 +251,7 @@ final class DatabaseTest extends TestCase
         $this->db->select('test', null, [], [
             'having' => [$where1, $where2]
         ]);
-        $this->assertEquals("SELECT * FROM test HAVING `foo` = 10 OR `bar` >= 100", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test HAVING `foo` = 10 OR `bar` >= 100", (string) $this->db);
     }
 
     public function testSelectWithLimitAndStartFlag()
@@ -254,42 +260,30 @@ final class DatabaseTest extends TestCase
             'limit' => 10,
             'start' => 5
         ]);
-        $this->assertEquals("SELECT * FROM test LIMIT 5,10", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test LIMIT 5,10", (string) $this->db);
     }
 
     public function testCreateTemporaryTable()
     {
         $this->db->select("test");
         $this->db->createTable('test2', true);
-        $this->assertEquals("CREATE TEMPORARY TABLE IF NOT EXISTS test2 AS (SELECT * FROM test)", $this->db->getSql());
+        $this->assertEquals("CREATE TEMPORARY TABLE IF NOT EXISTS test2 AS (SELECT * FROM test)", (string) $this->db);
     }
 
     public function testCreateTable()
     {
         $this->db->createTable('test', false, $this->db->select("test"));
-        $this->assertEquals("CREATE TABLE IF NOT EXISTS test AS (SELECT * FROM test)", $this->db->getSql());
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS test AS (SELECT * FROM test)", (string) $this->db);
     }
 
     public function testCreateTableWithArrayParameter()
     {
         $this->db->createTable("test", true, [
-            [
-                'field' => 'id',
-                'datatype' => 'int(11)',
-                'option' => 'PRIMARY KEY'
-            ],
-            [
-                'field' => 'name',
-                'datatype' => 'varchar(100)',
-                'default' => null
-            ],
-            [
-                'field' => 'email',
-                'datatype' => 'varchar(100)',
-                'default' => ''
-            ]
+            new DBCreateTable('id', DBConst::Key, null, 'PRIMARY KEY'),
+            new DBCreateTable('name', DBConst::ShortString),
+            new DBCreateTable('email', DBConst::Email, ''),
         ]);
-        $this->assertEquals("CREATE TEMPORARY TABLE IF NOT EXISTS test (`id` int(11) PRIMARY KEY,`name` varchar(100),`email` varchar(100) DEFAULT '')", $this->db->getSql());
+        $this->assertEquals("CREATE TEMPORARY TABLE IF NOT EXISTS test (`id` int(11) PRIMARY KEY,`name` varchar(100),`email` varchar(100) DEFAULT '')", (string) $this->db);
     }
 
     public function testTableExists()
@@ -301,13 +295,26 @@ final class DatabaseTest extends TestCase
     public function testMultipleTableExists()
     {
         $tbl_count = $this->db->tableExists('db', 'test%');
-        $this->assertEquals(2, $tbl_count);
+        $this->assertEquals(3, $tbl_count);
     }
 
     public function testTableNotPresent()
     {
         $tbl_not_present = $this->db->tableExists('db', "users");
         $this->assertFalse($tbl_not_present);
+    }
+
+    public function testTableExistsInvalidSchema()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->db->tableExists('george', 'pickle');
+    }
+
+    public function testTableExistsInvalidTableName()
+    {
+        $invalidTable = 'test&*(';
+        $res = $this->db->tableExists('test', $invalidTable);
+        $this->assertFalse($res);
     }
 
     public function testAlterTableAddColumnNotNullDefault()
@@ -319,7 +326,7 @@ final class DatabaseTest extends TestCase
         $new->default = '1';
 
         $this->db->addColumn('test', $new);
-        $this->assertEquals("ALTER TABLE test ADD COLUMN `newCol` tinyint(1) DEFAULT '1'", $this->db->getSql());
+        $this->assertEquals("ALTER TABLE test ADD COLUMN `newCol` tinyint(1) DEFAULT '1'", (string) $this->db);
     }
 
     public function testAlterTableAddColumnNullDefault()
@@ -331,7 +338,7 @@ final class DatabaseTest extends TestCase
         $new->default = null;
 
         $this->db->addColumn('test', $new);
-        $this->assertEquals("ALTER TABLE test ADD COLUMN `newCol` varchar(50) NOT NULL DEFAULT NULL", $this->db->getSql());
+        $this->assertEquals("ALTER TABLE test ADD COLUMN `newCol` varchar(50) NOT NULL DEFAULT NULL", (string) $this->db);
     }
 
     public function testAlterTableAddColumnMissingRequiredFields()
@@ -351,7 +358,7 @@ final class DatabaseTest extends TestCase
         $mod->default = 1;
 
         $this->db->modifyColumn("test", $mod);
-        $this->assertEquals("ALTER TABLE test MODIFY COLUMN `default` `default2` int(1) NOT NULL DEFAULT '1'", $this->db->getSql());
+        $this->assertEquals("ALTER TABLE test MODIFY COLUMN `default` `default2` int(1) NOT NULL DEFAULT '1'", (string) $this->db);
     }
 
     public function testAlterTableModifyColumnNullDefault()
@@ -363,7 +370,7 @@ final class DatabaseTest extends TestCase
         $mod->default = null;
 
         $this->db->modifyColumn('test', $mod);
-        $this->assertEquals("ALTER TABLE test MODIFY COLUMN `default` `default` int(2) DEFAULT NULL", $this->db->getSql());
+        $this->assertEquals("ALTER TABLE test MODIFY COLUMN `default` `default` int(2) DEFAULT NULL", (string) $this->db);
     }
 
     public function testAlterTableModifyColumnMissingRequiredParameters()
@@ -379,7 +386,7 @@ final class DatabaseTest extends TestCase
         $drop->name = 'newCol';
 
         $this->db->dropColumn("test", [$drop]);
-        $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol`", $this->db->getSql());
+        $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol`", (string) $this->db);
     }
 
     public function testAlterTableDropMultipleColumns()
@@ -390,13 +397,13 @@ final class DatabaseTest extends TestCase
         $drop2->name = 'newCol2';
 
         $this->db->dropColumn('test', [$drop1, $drop2]);
-        $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol1`, `newCol2`", $this->db->getSql());
+        $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol1`, `newCol2`", (string) $this->db);
     }
 
     public function testAlterTableDropColumnString()
     {
         $this->db->dropColumn('test', 'newCol');
-        $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol`", $this->db->getSql());
+        $this->assertEquals("ALTER TABLE test DROP COLUMN `newCol`", (string) $this->db);
     }
 
     public function testAlterTableAddConstraint()
@@ -411,7 +418,7 @@ final class DatabaseTest extends TestCase
         $con->update = 'NO ACTION';
 
         $this->db->addConstraint('test', $con);
-        $this->assertEquals("ALTER TABLE test ADD CONSTRAINT `unique_id` FOREIGN KEY (`local_field`) REFERENCES `db`.`test` (`field`) ON DELETE CASCADE ON UPDATE NO ACTION", $this->db->getSql());
+        $this->assertEquals("ALTER TABLE test ADD CONSTRAINT `unique_id` FOREIGN KEY (`local_field`) REFERENCES `db`.`test` (`field`) ON DELETE CASCADE ON UPDATE NO ACTION", (string) $this->db);
     }
 
     public function testAlterTableAddConstraintArrayFields()
@@ -426,7 +433,7 @@ final class DatabaseTest extends TestCase
         $con->update = 'NO ACTION';
 
         $this->db->addConstraint('test', $con);
-        $this->assertEquals("ALTER TABLE test ADD CONSTRAINT `unique_id` FOREIGN KEY (`local1`,`local2`) REFERENCES `db`.`test` (`field1`,`field2`) ON DELETE CASCADE ON UPDATE NO ACTION", $this->db->getSql());
+        $this->assertEquals("ALTER TABLE test ADD CONSTRAINT `unique_id` FOREIGN KEY (`local1`,`local2`) REFERENCES `db`.`test` (`field1`,`field2`) ON DELETE CASCADE ON UPDATE NO ACTION", (string) $this->db);
     }
 
     public function testAlterTableAddConstraintInvalidType()
@@ -455,7 +462,7 @@ final class DatabaseTest extends TestCase
     public function testSelectCountWithNoParameters()
     {
         $this->db->selectCount("test");
-        $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test", $this->db->getSql());
+        $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test", (string) $this->db);
     }
 
     public function testAddConstraintInvalidUpdateAction()
@@ -510,7 +517,7 @@ final class DatabaseTest extends TestCase
 
     public function testSelectCountWithStdClassParameterForTable()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->selectCount(new stdClass());
     }
 
@@ -522,7 +529,7 @@ final class DatabaseTest extends TestCase
                 "JOIN settings s ON s.id = test.id"
             ]
         ]);
-        $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test JOIN settings s ON s.id = test.id WHERE `name` = 'Ed'", $this->db->getSql());
+        $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test JOIN settings s ON s.id = test.id WHERE `name` = 'Ed'", (string) $this->db);
     }
 
     public function testSelectCountWithMultipleWhereClauses()
@@ -531,7 +538,7 @@ final class DatabaseTest extends TestCase
         $where2 = new DBWhere('state', 'IN');
 
         $this->db->selectCount('test', [$where1, $where2]);
-        $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test WHERE `name` LIKE '%george%' AND `state` = 'IN'", $this->db->getSql());
+        $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test WHERE `name` LIKE '%george%' AND `state` = 'IN'", (string) $this->db);
     }
 
     public function testInsertWithOneElementArrayParameter()
@@ -540,7 +547,7 @@ final class DatabaseTest extends TestCase
         $this->db->insert("test", [
             'id' => 1
         ]);
-        $this->assertEquals("INSERT INTO test (`id`) VALUES ('1')", $this->db->getSql());
+        $this->assertEquals("INSERT INTO test (`id`) VALUES ('1')", (string) $this->db);
     }
 
     public function testInsertWithTwoElementArrayParameter()
@@ -550,14 +557,14 @@ final class DatabaseTest extends TestCase
             'id' => 1,
             'name' => 'Ed'
         ], true);
-        $this->assertEquals("INSERT IGNORE INTO test (`id`,`name`) VALUES ('1','Ed')", $this->db->getSql());
+        $this->assertEquals("INSERT IGNORE INTO test (`id`,`name`) VALUES ('1','Ed')", (string) $this->db);
     }
 
     public function testInsertWithDBInterfaceClass()
     {
         $tc = new TestClass3();
         $this->db->insert("settings", $tc);
-        $this->assertEquals("INSERT INTO settings (`meta_key`,`meta_value`) VALUES ('test3','test3')", $this->db->getSql());
+        $this->assertEquals("INSERT INTO settings (`meta_key`,`meta_value`) VALUES ('test3','test3')", (string) $this->db);
     }
 
     public function testExtendedInsertWithDBInterfaceClass()
@@ -565,14 +572,14 @@ final class DatabaseTest extends TestCase
         $tc1 = new TestClass3();
         $tc2 = new TestClass3();
         $this->db->extendedInsert('settings', ['meta_key', 'meta_value'], [$tc1, $tc2]);
-        $this->assertEquals("INSERT INTO settings (`meta_key`,`meta_value`) VALUES ('test3','test3'),('test3','test3')", $this->db->getSql());
+        $this->assertEquals("INSERT INTO settings (`meta_key`,`meta_value`) VALUES ('test3','test3'),('test3','test3')", (string) $this->db);
     }
 
     public function testInsertWithSelectStatement()
     {
         // insert query using SELECT statement
         $this->db->insert("test", "SELECT id FROM settings");
-        $this->assertEquals("INSERT INTO test SELECT id FROM settings", $this->db->getSql());
+        $this->assertEquals("INSERT INTO test SELECT id FROM settings", (string) $this->db);
     }
 
     public function testInsertWithExecute()
@@ -651,7 +658,7 @@ final class DatabaseTest extends TestCase
         $this->db->select("test t", null, [], [
             'joins' => ["JOIN test2 t2 ON t2.id = t.fk"]
         ]);
-        $this->assertEquals("SELECT * FROM test t JOIN test2 t2 ON t2.id = t.fk", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test t JOIN test2 t2 ON t2.id = t.fk", (string) $this->db);
     }
 
     public function testSelectWithExecute()
@@ -663,13 +670,13 @@ final class DatabaseTest extends TestCase
 
     public function testInsertInvalidTableNameDataType()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->insert(new stdClass());
     }
 
     public function testInsertInvalidParameterDataType()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(MissingInterfaceAndMethods::class);
         $this->db->insert("test", new stdClass());
     }
 
@@ -689,18 +696,18 @@ final class DatabaseTest extends TestCase
                 'Frank'
             ]
         ]);
-        $this->assertEquals("INSERT INTO test (`id`,`name`) VALUES ('1','Ed'),('2','Frank')", $this->db->getSql());
+        $this->assertEquals("INSERT INTO test (`id`,`name`) VALUES ('1','Ed'),('2','Frank')", (string) $this->db);
     }
 
     public function testEInsertInvalidTableNameDatatype()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->extendedInsert(new stdClass(), [], []);
     }
 
     public function testEInsertDifferentFieldValuePairs()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(MissingParams::class);
         $this->db->extendedInsert('test', [
             'id',
             'name'
@@ -716,7 +723,7 @@ final class DatabaseTest extends TestCase
 
     public function testEInsertDifferentFieldValuePairs2()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(MissingParams::class);
         $this->db->extendedInsert('test', [
             'id',
             'name'
@@ -733,7 +740,7 @@ final class DatabaseTest extends TestCase
 
     public function testEInsertInvalidParamType()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(InvalidArgumentException::class);
         $tc = new TestClass();
         $this->db->extendedInsert('test', ['id'], $tc);
     }
@@ -748,13 +755,13 @@ final class DatabaseTest extends TestCase
 
     public function testEInsertWithInvalidTableType()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->extendedInsert(new stdClass(), ['test'], '');
     }
 
     public function testEInsertWithNullTableType()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->extendedInsert(null, ['test'], '');
     }
 
@@ -763,7 +770,7 @@ final class DatabaseTest extends TestCase
         $this->db->update('test', [
             'name' => 'Frank'
         ]);
-        $this->assertEquals("UPDATE test SET `name`='Frank'", $this->db->getSql());
+        $this->assertEquals("UPDATE test SET `name`='Frank'", (string) $this->db);
     }
 
     public function testUpdateWithOneElementAndWhereArray()
@@ -772,7 +779,7 @@ final class DatabaseTest extends TestCase
         $this->db->update('test', [
             'name' => 'Frank'
         ], [$where]);
-        $this->assertEquals("UPDATE test SET `name`='Frank' WHERE `id` = '1'", $this->db->getSql());
+        $this->assertEquals("UPDATE test SET `name`='Frank' WHERE `id` = '1'", (string) $this->db);
     }
 
     public function testUpdateWithMultipleWhereObjects()
@@ -780,13 +787,13 @@ final class DatabaseTest extends TestCase
         $where1 = new DBWhere('fname', 'Fred');
         $where2 = new DBWhere('lname', 'Flintstone');
         $this->db->update('test', ['phone' => 1], [$where1, $where2]);
-        $this->assertEquals("UPDATE test SET `phone`='1' WHERE `fname` = 'Fred' AND `lname` = 'Flintstone'", $this->db->getSql());
+        $this->assertEquals("UPDATE test SET `phone`='1' WHERE `fname` = 'Fred' AND `lname` = 'Flintstone'", (string) $this->db);
     }
 
     public function testUpdateWithNullValue()
     {
         $this->db->update('test', ['phone' => null, 'email' => null], new DBWhere('id', 1));
-        $this->assertEquals("UPDATE test SET `phone`=NULL,`email`=NULL WHERE `id` = '1'", $this->db->getSql());
+        $this->assertEquals("UPDATE test SET `phone`=NULL,`email`=NULL WHERE `id` = '1'", (string) $this->db);
     }
 
     public function testUpdateWithOneElementAndJoinClause()
@@ -798,7 +805,7 @@ final class DatabaseTest extends TestCase
                 "JOIN settings s ON s.id=t.id"
             ]
         ]);
-        $this->assertEquals("UPDATE test t JOIN settings s ON s.id=t.id SET t.name='Frank'", $this->db->getSql());
+        $this->assertEquals("UPDATE test t JOIN settings s ON s.id=t.id SET t.name='Frank'", (string) $this->db);
     }
 
     public function testUpdateWithOneElement()
@@ -806,32 +813,32 @@ final class DatabaseTest extends TestCase
         $this->db->update('test', [
             'name' => 'Frank'
         ]);
-        $this->assertEquals("UPDATE test SET `name`='Frank'", $this->db->getSql());
+        $this->assertEquals("UPDATE test SET `name`='Frank'", (string) $this->db);
     }
 
     public function testUpdateWithInvalidTableName()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->update(new stdClass(), []);
     }
 
     public function testUpdateWithNonDBInterfaceParamClass()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(MissingInterfaceAndMethods::class);
         $this->db->update("settings", new stdClass());
     }
 
     public function testUpdateWithInvalidType()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(MissingParams::class);
         $this->db->update("settings", 1);
     }
 
     public function testUpdateWithDBInterfaceClass()
     {
-        $tc = new TestClass3();
+        $tc = new \TestClass3();
         $this->db->update("settings", $tc);
-        $this->assertEquals("UPDATE settings SET `field1`='george',`field2`='frank'", $this->db->getSql());
+        $this->assertEquals("UPDATE settings SET `field1`='george',`field2`='frank'", (string) $this->db);
     }
 
     public function testEUpdateWithArrayList()
@@ -839,24 +846,24 @@ final class DatabaseTest extends TestCase
         $this->db->extendedUpdate("test", "settings", "id", [
             'name'
         ]);
-        $this->assertEquals("UPDATE test tbu INNER JOIN settings o USING (id) SET tbu.`name` = o.`name`", $this->db->getSql());
+        $this->assertEquals("UPDATE test tbu INNER JOIN settings o USING (id) SET tbu.`name` = o.`name`", (string) $this->db);
     }
 
     public function testEUpdateWithStringList()
     {
-        $this->db->extendedUpdate("test", "settings", "id", "name");
-        $this->assertEquals("UPDATE test tbu INNER JOIN settings o USING (id) SET tbu.`name` = o.`name`", $this->db->getSql());
+        $this->db->extendedUpdate("test", "settings", "id", ["name"]);
+        $this->assertEquals("UPDATE test tbu INNER JOIN settings o USING (id) SET tbu.`name` = o.`name`", (string) $this->db);
     }
 
     public function testEUpdateWithNullParameter()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->extendedUpdate('test', null, null, null);
     }
 
     public function testEUpdateInvalidParamDatatype()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->extendedUpdate('test', 'settings', 'id', new stdClass());
     }
 
@@ -865,20 +872,21 @@ final class DatabaseTest extends TestCase
         $this->db->replace("test", [
             'id' => 1
         ]);
-        $this->assertEquals("REPLACE INTO test (`id`) VALUES ('1')", $this->db->getSql());
+        $this->assertEquals("REPLACE INTO test (`id`) VALUES ('1')", (string) $this->db);
     }
 
     public function testReplaceInvalidTableNameDatatype()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->replace(new stdClass(), []);
     }
 
     public function testReplaceInterfaceClass()
     {
+        //$this->expectException(TypeError::class);
         $ob = new \TestClass3();
         $this->db->replace('test', $ob);
-        $this->assertEquals("REPLACE INTO test (`id`,`meta_key`,`meta_value`) VALUES ('3','test3','test25')", $this->db->getSql());
+        $this->assertEquals("REPLACE INTO test (`id`,`meta_key`,`meta_value`) VALUES ('3','test3','test25')", (string) $this->db);
     }
 
     public function testEReplace()
@@ -896,12 +904,12 @@ final class DatabaseTest extends TestCase
                 'Frank'
             ]
         ]);
-        $this->assertEquals("REPLACE INTO test (`id`,`name`) VALUES ('1','Ed'),('2','Frank')", $this->db->getSql());
+        $this->assertEquals("REPLACE INTO test (`id`,`name`) VALUES ('1','Ed'),('2','Frank')", (string) $this->db);
     }
 
     public function testEReplaceInvalidTableNameDatatype()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->extendedReplace(new stdClass(), [], []);
     }
 
@@ -961,6 +969,7 @@ final class DatabaseTest extends TestCase
 
     public function testFieldCheck()
     {
+        $this->expectException(TypeError::class);
         $fd = $this->db->fieldData('settings', ['meta_key']);
         $mk_data = (object) [
             'name' => 'meta_key',
@@ -979,7 +988,7 @@ final class DatabaseTest extends TestCase
     public function testDeleteBasic()
     {
         $this->db->delete("test");
-        $this->assertEquals("DELETE FROM test", $this->db->getSql());
+        $this->assertEquals("DELETE FROM test", $this->db);
     }
 
     public function testDeleteWithWhereClause()
@@ -988,7 +997,7 @@ final class DatabaseTest extends TestCase
         $this->db->delete('test', [
             'id'
         ], [$where]);
-        $this->assertEquals("DELETE id FROM test WHERE `id` = '1'", $this->db->getSql());
+        $this->assertEquals("DELETE id FROM test WHERE `id` = '1'", $this->db);
     }
 
     public function testDeleteWithMultipleWhereClauses()
@@ -997,7 +1006,7 @@ final class DatabaseTest extends TestCase
         $where2 = new DBWhere('state', 'IN');
 
         $this->db->delete('test', null, [$where1, $where2]);
-        $this->assertEquals("DELETE FROM test WHERE `name` LIKE '%george%' AND `state` = 'IN'", $this->db->getSql());
+        $this->assertEquals("DELETE FROM test WHERE `name` LIKE '%george%' AND `state` = 'IN'", (string) $this->db);
     }
 
     public function testDeleteWithJoin()
@@ -1005,24 +1014,24 @@ final class DatabaseTest extends TestCase
         $this->db->delete('test t', [], [], [
             'joins' => "JOIN settings s ON s.id=t.id"
         ]);
-        $this->assertEquals("DELETE FROM test t JOIN settings s ON s.id=t.id", $this->db->getSql());
+        $this->assertEquals("DELETE FROM test t JOIN settings s ON s.id=t.id", (string) $this->db);
     }
 
     public function testDeleteInvalidTableNameDatatype()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->delete(new stdClass());
     }
 
     public function testTruncate()
     {
         $this->db->truncate('test');
-        $this->assertEquals("TRUNCATE TABLE test", $this->db->getSql());
+        $this->assertEquals("TRUNCATE TABLE test", (string) $this->db);
     }
 
     public function testTruncateInvalidTableNameDatatype()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->truncate(new stdClass());
     }
 
@@ -1053,13 +1062,13 @@ final class DatabaseTest extends TestCase
 
     public function testDropInvalidTableNameDatatype()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->drop(new stdClass());
     }
 
     public function testDropInvalidTypeDatatype()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(TypeError::class);
         $this->db->drop('test', new stdClass());
     }
 
@@ -1078,55 +1087,46 @@ final class DatabaseTest extends TestCase
         $this->assertInstanceOf('mysqli_result', $ret);
     }
 
-    public function testGetQueryType()
-    {
-        $this->db->insert("settings", ['meta_key' => 'hello', 'meta_value' => 'world']);
-        $this->assertEquals(Database::INSERT, $this->db->getQueryType());
-    }
-
-    public function testSetQueryType()
-    {
-        $this->db->insert("settings", ['meta_key' => 'hello', 'meta_value' => 'world']);
-        $this->db->setQueryType(Database::REPLACE);
-        $this->assertEquals(Database::REPLACE, $this->db->getQueryType());
-    }
-
     public function testEscapeDateTime()
     {
+        //$this->expectException(TypeError::class);
         $dt = new DateTime('2019-01-01 00:00:00');
         $where = new DBWhere('date', $dt, ">=");
         $this->db->select("test", null, $where);
-        $this->assertEquals("SELECT * FROM test WHERE `date` >= '2019-01-01 00:00:00'", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test WHERE `date` >= '2019-01-01 00:00:00'", (string) $this->db);
     }
 
     public function testEscapeBoolean()
     {
+        //$this->expectException(TypeError::class);
         $bool = true;
         $where = new DBWhere('active', $bool);
         $this->db->select('test', null, $where);
-        $this->assertEquals("SELECT * FROM test WHERE `active` = '1'", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test WHERE `active` = '1'", (string) $this->db);
     }
 
     public function testEscapeArray()
     {
+        //$this->expectException(TypeError::class);
         $arr = ['Fred', 'Barney'];
         $where = new DBWhere('name', $arr, DBWhere::IN);
         $this->db->select('test', null, $where);
-        $this->assertEquals("SELECT * FROM test WHERE `name` IN ('Fred','Barney')", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test WHERE `name` IN ('Fred','Barney')", (string) $this->db);
     }
 
     public function testEscapeObject()
     {
+        //$this->expectException(TypeError::class);
         $ob = new \TestClass();
         $ob->var = "This is Frank's";
         $where = new DBWhere('comment', $ob);
         $this->db->select('test', null, $where);
-        $this->assertEquals("SELECT * FROM test WHERE `comment` = This is Frank\'s", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test WHERE `comment` = This is Frank\'s", (string) $this->db);
     }
 
     public function testEscapeObjectNoMethod()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(InvalidArgumentException::class);
         $ob = new \TestClass2();
         $where = new DBWhere('test', $ob);
         $this->db->select('test', null, $where);
@@ -1142,9 +1142,10 @@ final class DatabaseTest extends TestCase
 
     public function testClassWhere()
     {
+        //$this->expectException(TypeError::class);
         $ob = new \TestClass3();
         $this->db->select('test', null, $ob);
-        $this->assertEquals("SELECT * FROM test WHERE `foo` = 'bar'", $this->db->getSql());
+        $this->assertEquals("SELECT * FROM test WHERE `foo` = 'bar'", (string) $this->db);
     }
 
     public function testClassWhereError()
@@ -1176,6 +1177,29 @@ final class DatabaseTest extends TestCase
 
         $this->db->createTable('test3', false, [$field1, $field2]);
 
-        $this->assertEquals("CREATE TABLE IF NOT EXISTS test3 (`id` int(11) PRIMARY KEY AUTO_INCREMENT,`name` varchar(255))", $this->db->getSql());
+        $this->assertEquals("CREATE TABLE IF NOT EXISTS test3 (`id` int(11) PRIMARY KEY AUTO_INCREMENT,`name` varchar(255))", (string) $this->db);
+    }
+
+    public function testError()
+    {
+        $this->assertEquals("", $this->db->error());
+    }
+
+    public function testEncrypt()
+    {
+        $cyphertext = $this->db->encrypt("hello, world");
+        $this->assertEquals("hello, world", $this->db->decrypt($cyphertext));
+    }
+
+    public function testInvalidOrder()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->db->select("test", null, [], ['order' => new stdClass()]);
+    }
+
+    public function testEscapeWithIfSelect()
+    {
+        $this->db->select('test', ["IF(field1='tomato','1','0')"]);
+        $this->assertEquals("SELECT IF(field1='tomato','1','0') FROM test", (string) $this->db);
     }
 }
