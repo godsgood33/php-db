@@ -49,119 +49,119 @@ class Database
      *
      * @var integer
      */
-    public const SELECT = 1;
+    private const SELECT = 1;
 
     /**
      * Constant defining a SELECT COUNT query
      *
      * @var integer
      */
-    public const SELECT_COUNT = 2;
+    private const SELECT_COUNT = 2;
 
     /**
      * Constant defining a CREATE TABLE query
      *
      * @var integer
      */
-    public const CREATE_TABLE = 3;
+    private const CREATE_TABLE = 3;
 
     /**
      * Constant defining DROP query
      *
      * @var integer
      */
-    public const DROP = 4;
+    private const DROP = 4;
 
     /**
      * Constant defining DELETE query
      *
      * @var integer
      */
-    public const DELETE = 5;
+    private const DELETE = 5;
 
     /**
      * Constant defining INSERT query
      *
      * @var integer
      */
-    public const INSERT = 6;
+    private const INSERT = 6;
 
     /**
      * Constant defining REPLACE query
      *
      * @var integer
      */
-    public const REPLACE = 7;
+    private const REPLACE = 7;
 
     /**
      * Constant defining UPDATE query
      *
      * @var integer
      */
-    public const UPDATE = 8;
+    private const UPDATE = 8;
 
     /**
      * Constant defining EXTENDED INSERT query
      *
      * @var integer
      */
-    public const EXTENDED_INSERT = 9;
+    private const EXTENDED_INSERT = 9;
 
     /**
      * Constant defining EXTENDED REPLACE query
      *
      * @var integer
      */
-    public const EXTENDED_REPLACE = 10;
+    private const EXTENDED_REPLACE = 10;
 
     /**
      * Constant defining EXTENDED UPDATE query
      *
      * @var integer
      */
-    public const EXTENDED_UPDATE = 11;
+    private const EXTENDED_UPDATE = 11;
 
     /**
      * Constant defining ALTER TABLE query
      *
      * @var integer
      */
-    public const ALTER_TABLE = 12;
+    private const ALTER_TABLE = 12;
 
     /**
      * Constant defining action for alter table statement
      *
      * @var integer
      */
-    public const ADD_COLUMN = 1;
+    private const ADD_COLUMN = 1;
 
     /**
      * Constant defining action for alter table statement
      *
      * @var integer
      */
-    public const DROP_COLUMN = 2;
+    private const DROP_COLUMN = 2;
 
     /**
      * Constant defining action for alter table statement
      *
      * @var integer
      */
-    public const MODIFY_COLUMN = 3;
+    private const MODIFY_COLUMN = 3;
 
     /**
      * Constant defining action to add a constraint
      *
      * @var integer
      */
-    public const ADD_CONSTRAINT = 4;
+    private const ADD_CONSTRAINT = 4;
 
     /**
      * Constant defining a TRUNCATE TABLE query
      *
      * @var integer
      */
-    public const TRUNCATE = 13;
+    private const TRUNCATE = 13;
 
     /**
      * The mysqli connection
@@ -231,12 +231,13 @@ class Database
      * Constructor
      *
      * @param string $strLogPath
-     *            [optional]
+     *            [optional] absolute log path for the log file
      * @param mysqli $dbh
      *            [optional]
      *            [by ref]
      *            mysqli object to perform queries.
      * @param int $intLogLevel
+     *            [optional] Level of the log file to output
      *
      * @uses PHP_DB_ENCRYPT bool to define if the password is encrypted
      * @uses PHP_DB_PWD string to store the password
@@ -248,29 +249,13 @@ class Database
      */
     public function __construct($strLogPath = __DIR__, mysqli &$dbh = null, $intLogLevel = null)
     {
-        if (! is_null($dbh) && is_a($dbh, 'mysqli')) {
-            $this->_c = $dbh;
-        } elseif (!defined('PHP_DB_SERVER') || !defined('PHP_DB_USER') || !defined('PHP_DB_PWD') || !defined('PHP_DB_SCHEMA')) {
-            throw new MissingParams("Please create and include a constant file with the following constants defining your DB connection (PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA)", E_USER_ERROR);
-        } elseif (defined('PHP_DB_ENCRYPT') && (!defined('PHP_DB_ENCRYPT_ALGORITHM') || !defined('PHP_DB_ENCRYPT_SALT'))) {
-            throw new MissingParams("Missing required PHP_DB_ENCRYPT_ALGORITHM or PHP_DB_ENCRYPT_SALT constants");
-        }
-
-        if (defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
-            $pwd = $this->decrypt(PHP_DB_PWD);
-        } else {
-            $pwd = PHP_DB_PWD;
-        }
-
-        $this->_c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, $pwd, PHP_DB_SCHEMA);
-
-        if ($this->_c->connect_errno) {
-            throw new ConnectError("Could not create database class due to error {$this->_c->connect_error}", E_ERROR);
-        }
-
+        // set the log file path
         $this->_logPath = $strLogPath;
-        touch($this->_logPath . "/db.log");
+        if (!file_exists($this->_logPath)) {
+            touch($this->_logPath . "/db.log");
+        }
 
+        // set the log level
         if (!defined("PHP_DB_LOG_LEVEL") && is_null($intLogLevel)) {
             $this->_logLevel = Logger::ERROR;
         } elseif (!is_null($intLogLevel)) {
@@ -279,16 +264,48 @@ class Database
             $this->_logLevel = PHP_DB_LOG_LEVEL;
         }
 
+        // open the log handler
         $this->_logger = new Logger('db', [
             new StreamHandler(realpath($this->_logPath . "/db.log"), $this->_logLevel)
         ]);
 
+        // check to see if we are operating in a CLI and if the user wants log data output to the terminal
         if (PHP_SAPI == 'cli' && defined('PHP_DB_CLI_LOG') && PHP_DB_CLI_LOG) {
             $stream = new StreamHandler(STDOUT, $this->_logLevel);
             $stream->setFormatter(new LineFormatter("%datetime% %level_name% %message%" . PHP_EOL, "H:i:s.u"));
             $this->_logger->pushHandler($stream);
         }
 
+        // check to see if a connection was passed and all defined constants are present to establish a connection
+        if (! is_null($dbh) && is_a($dbh, 'mysqli')) {
+            $this->_logger->debug("Connecting through existing connection");
+            $this->_c = $dbh;
+        } elseif (!defined('PHP_DB_SERVER') || !defined('PHP_DB_USER') || !defined('PHP_DB_PWD') || !defined('PHP_DB_SCHEMA')) {
+            $this->_logger->critical("Missing essential defined constants");
+            throw new MissingParams("Please create and include a constant file with the following constants defining your DB connection (PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA)", E_USER_ERROR);
+        } elseif (defined('PHP_DB_ENCRYPT') && (!defined('PHP_DB_ENCRYPT_ALGORITHM') || !defined('PHP_DB_ENCRYPT_SALT'))) {
+            $this->_logger->critical("Missing essential encryption constants");
+            throw new MissingParams("Missing required PHP_DB_ENCRYPT_ALGORITHM or PHP_DB_ENCRYPT_SALT constants");
+        }
+
+        // check to see if the password is encrypted and decrypt if it is
+        if (defined('PHP_DB_ENCRYPT') && PHP_DB_ENCRYPT) {
+            $this->_logger->debug("Decrypting password");
+            $pwd = $this->decrypt(PHP_DB_PWD);
+        } else {
+            $pwd = PHP_DB_PWD;
+        }
+
+        // open the connection
+        $this->_c = new mysqli(PHP_DB_SERVER, PHP_DB_USER, $pwd, PHP_DB_SCHEMA);
+
+        // check for a connection error and throw an error if there is one
+        if ($this->_c->connect_errno) {
+            $this->_logger->error("Error connecting to database {$this->_c->connect_error}");
+            throw new ConnectError("Could not create database class due to error {$this->_c->connect_error}", E_ERROR);
+        }
+
+        // update the logger with the connection details
         $this->_logger->info("Database connected");
         $this->_logger->debug("Connection details:", [
             'Server' => PHP_DB_SERVER,
@@ -304,11 +321,20 @@ class Database
      * Function to make sure that the database is connected
      *
      * @return bool
+     *
+     * @throws ConnectError
      */
     public function isConnected(): bool
     {
-        $this->_logger->debug("Pinging server");
-        return $this->_c->ping();
+        $this->_logger->info("Checking for live connection");
+
+        if (is_a($this->_c, 'mysqli')) {
+            $ret = $this->_c->ping();
+        } else {
+            throw new ConnectError("Connection lost");
+        }
+
+        return $ret;
     }
 
     /**
@@ -320,6 +346,7 @@ class Database
      */
     public function setLogger(Logger $log): bool
     {
+        // set the logger
         $this->_logger->debug("Setting logger");
         $this->_logger = $log;
         return true;
@@ -345,6 +372,7 @@ class Database
      */
     public function getQueryType(): int
     {
+        $this->_logger->debug("Getting query type");
         return $this->_queryType;
     }
 
@@ -352,23 +380,27 @@ class Database
      * Setter function for _queryType
      *
      * @param int $qt
+     *      Class constants that store query type
      *
      * @return Database
      */
-    public function setQueryType(int $qt): Database
+    private function setQueryType(int $qt): Database
     {
+        $this->_logger->debug("Setting query type");
         $this->_queryType = $qt;
 
         return $this;
     }
 
     /**
-     * Magic method to conver the class to a string represented in the SQL query
+     * Magic method to convert the class to a string represented by the SQL query
      *
-     * @return string
+     * @return string|null
      */
-    public function __toString(): string
+    public function __toString(): ?string
     {
+        $this->_logger->notice("__toString");
+        $this->_logger->debug($this->_sql);
         return $this->_sql;
     }
 
@@ -376,6 +408,7 @@ class Database
      * Function to return the currently selected database schema
      *
      * @return string|bool
+     *      Returns the string name of the selected schema or FALSE if none selected
      */
     public function getSchema()
     {
@@ -395,13 +428,15 @@ class Database
      * @param string $strSchema
      *
      * @return bool
+     *
+     * @throws QueryError
      */
     public function setSchema(string $strSchema): bool
     {
-        $this->_logger->debug("Setting schema to {$strSchema}");
+        $this->_logger->info("Setting schema to {$strSchema}");
         if (! $this->_c->select_db($strSchema)) {
-            $this->_logger->emergency("Unknown schema {$strSchema}", [debug_backtrace()]);
-            return false;
+            $this->_logger->error("Unknown schema {$strSchema}");
+            throw new QueryError("Unknown database schema $strSchema");
         }
         return true;
     }
@@ -410,13 +445,15 @@ class Database
      * Method to set a MYSQL variable
      *
      * @param string $strName
+     *      Name of the SQL variable to set
      * @param string $strVal
+     *      Value for the variable
      *
      * @return bool
      */
     public function setVar(string $strName, ?string $strVal): bool
     {
-        if (! $strName) {
+        if (empty($strName)) {
             $this->_logger->debug("name is blank", [
                 'name'  => $strName
             ]);
@@ -426,6 +463,7 @@ class Database
         $this->_logger->debug("Setting {$strName} = '{$strVal}'");
 
         if ($this->_c->real_query("SET $strName = {$this->_escape($strVal)}")) {
+            $this->_logger->info("Var set");
             return true;
         } else {
             $this->_logger->error("Failed to set variable {$this->_c->error}");
@@ -457,12 +495,8 @@ class Database
         $this->_result = false;
         $this->_insertId = null;
 
-        if (is_a($this->_c, 'mysqli')) {
-            if (! $this->_c->ping()) {
-                throw new ConnectError("Database lost connection", E_ERROR);
-            }
-        } else {
-            throw new ConnectError('Database was not connected', E_ERROR);
+        if (!$this->isConnected()) {
+            throw new ConnectError("Database connection lost");
         }
 
         $this->_logger->info("Executing {$this->_queryType} query");
@@ -510,6 +544,7 @@ class Database
     {
         $res = null;
 
+        // check the sql results and process appropriately
         if (in_array($this->_queryType, [Database::CREATE_TABLE, Database::ALTER_TABLE, Database::TRUNCATE, Database::DROP])) {
             $res = $this->_result;
         } elseif (in_array($this->_queryType, [Database::INSERT, Database::EXTENDED_INSERT, Database::DELETE, Database::UPDATE, Database::EXTENDED_UPDATE, Database::REPLACE, Database::EXTENDED_REPLACE, Database::DELETE])) {
@@ -584,11 +619,7 @@ class Database
      */
     public function query(?string $strSql = null)
     {
-        if (is_null($strSql)) {
-            return $this->_c->query($this->_sql);
-        }
-
-        return $this->_c->query($strSql);
+        return is_null($strSql) ? $this->_c->query($this->_sql) : $this->_c->query($strSql);
     }
 
     /**
@@ -599,9 +630,8 @@ class Database
      * @param array|string $fields
      *            [optional]
      *            Optional array of fields to return (defaults to '*')
-     * @param array $arrWhere
-     *            [optional]
-     *            Optional 2-dimensional array to build where clause from
+     * @param array:DBWhere|DBWhere $arrWhere
+     *            [optional] Where clause data
      * @param array $arrFlags
      *            [optional]
      *            Optional 2-dimensional array to allow other flags
@@ -615,11 +645,12 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function select(string $strTableName, $fields = null, ?array $arrWhere = [], ?array $arrFlags = [])
+    public function select(string $strTableName, $fields = null, $arrWhere = [], ?array $arrFlags = [])
     {
         $this->_sql = null;
-        $this->_queryType = self::SELECT;
+        $this->setQueryType(self::SELECT);
 
+        // starting building the query
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_logger->debug("Starting SELECT query of {$strTableName}", [
                 'fields' => $this->fields($fields)
@@ -630,6 +661,7 @@ class Database
             throw new InvalidArgumentException("Table name is invalid");
         }
 
+        // add in any joins
         if (isset($arrFlags['joins']) && is_array($arrFlags['joins']) && count($arrFlags['joins'])) {
             $this->_logger->debug("Adding joins", [
                 'joins' => implode(' ', $arrFlags['joins'])
@@ -639,6 +671,7 @@ class Database
             $this->_logger->debug("No joins");
         }
 
+        // parse the where clauses
         $where = $this->parseClause($arrWhere);
 
         if (! is_null($where) && is_array($where) && count($where)) {
@@ -655,6 +688,7 @@ class Database
             }
         }
 
+        // search for any other flags (order, having, group)
         if (is_array($arrFlags) && count($arrFlags)) {
             $this->_logger->debug("Parsing flags and adding to query", $arrFlags);
             $this->_sql .= $this->flags($arrFlags);
@@ -672,7 +706,7 @@ class Database
      *
      * @param string $strTableName
      *            The table to query
-     * @param array $arrWhere
+     * @param array:DBWhere|DBWhere $arrWhere
      *            [optional]
      *            Optional 2-dimensional array to build where clause
      * @param array $arrFlags
@@ -687,11 +721,12 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function selectCount(string $strTableName, ?array $arrWhere = [], ?array $arrFlags = [])
+    public function selectCount(string $strTableName, $arrWhere = [], ?array $arrFlags = [])
     {
         $this->_sql = null;
-        $this->_queryType = self::SELECT_COUNT;
+        $this->setQueryType(self::SELECT_COUNT);
 
+        // start building query
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "SELECT COUNT(1) AS 'count' FROM $strTableName";
         } else {
@@ -699,10 +734,12 @@ class Database
             throw new InvalidArgumentException("Table name is invalid");
         }
 
+        // add in any joins
         if (isset($arrFlags['joins']) && is_array($arrFlags['joins'])) {
             $this->_sql .= " " . implode(" ", $arrFlags['joins']);
         }
 
+        // parse where clauses
         $where = $this->parseClause($arrWhere);
 
         if (! is_null($where) && is_array($where) && count($where)) {
@@ -719,6 +756,7 @@ class Database
             }
         }
 
+        // add in additional flags (group, having, order)
         if (is_array($arrFlags) && count($arrFlags)) {
             $this->_sql .= $this->flags($arrFlags);
         }
@@ -747,14 +785,16 @@ class Database
     public function insert(string $strTableName, $arrParams = null, bool $blnToIgnore = false)
     {
         $this->_sql = null;
-        $this->_queryType = self::INSERT;
+        $this->setQueryType(self::INSERT);
 
+        // start building query
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "INSERT" . ($blnToIgnore ? " IGNORE" : "") . " INTO {$strTableName}";
         } else {
             throw new InvalidArgumentException("Table name is invalid");
         }
 
+        // add in field parameters and values
         if (is_array($arrParams) && count($arrParams)) {
             if (is_array($arrParams) && count($arrParams)) {
                 $this->_sql .= " (`" . implode("`,`", array_keys($arrParams)) . "`)";
@@ -763,7 +803,7 @@ class Database
                 $this,
                 '_escape'
             ], array_values($arrParams))) . ")";
-        } elseif (is_string($arrParams) && strpos(strtolower($arrParams), 'select') !== false) {
+        } elseif (is_string($arrParams) && stripos($arrParams, 'select') !== false) {
             $this->_sql .= " {$arrParams}";
         } elseif (is_object($arrParams)) {
             $interfaces = class_implements($arrParams);
@@ -809,8 +849,9 @@ class Database
     public function extendedInsert(string $strTableName, array $arrFields, $params, bool $blnToIgnore = false)
     {
         $this->_sql = null;
-        $this->_queryType = self::EXTENDED_INSERT;
+        $this->setQueryType(self::EXTENDED_INSERT);
 
+        // start building query
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "INSERT " . ($blnToIgnore ? "IGNORE " : "") . "INTO $strTableName " . "(`" . implode("`,`", $arrFields) . "`)";
         } else {
@@ -868,9 +909,9 @@ class Database
      *            The table name to update
      * @param array $arrParams
      *            Name/value pairs of the field name and value
-     * @param array $arrWhere
+     * @param array:DBWhere|DBWhere $arrWhere
      *            [optional]
-     *            Two-dimensional array to create where clause
+     *            DBWhere clauses
      * @param array $arrFlags
      *            [optional]
      *            Two-dimensional array to create other flag options (joins, order, and group)
@@ -885,10 +926,10 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function update(string $strTableName, array $arrParams, ?array $arrWhere = [], ?array $arrFlags = [])
+    public function update(string $strTableName, $arrParams, $arrWhere = [], ?array $arrFlags = [])
     {
         $this->_sql = "UPDATE ";
-        $this->_queryType = self::UPDATE;
+        $this->setQueryType(self::UPDATE);
 
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql .= $strTableName;
@@ -989,7 +1030,7 @@ class Database
     public function extendedUpdate(string $strTableToUpdate, string $strOriginalTable, string $strLinkField, array $arrParams)
     {
         $this->_sql = "UPDATE ";
-        $this->_queryType = self::EXTENDED_UPDATE;
+        $this->setQueryType(self::EXTENDED_UPDATE);
 
         if (! is_null($strTableToUpdate) && ! is_null($strOriginalTable) && ! is_null($strLinkField)) {
             $this->_sql .= "$strTableToUpdate tbu INNER JOIN $strOriginalTable o USING ($strLinkField) SET ";
@@ -1029,10 +1070,10 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function replace(string $strTableName, array $arrParams)
+    public function replace(string $strTableName, $arrParams)
     {
         $this->_sql = null;
-        $this->_queryType = self::REPLACE;
+        $this->setQueryType(self::REPLACE);
 
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "REPLACE INTO $strTableName ";
@@ -1084,7 +1125,7 @@ class Database
     public function extendedReplace(string $strTableName, array $arrFields, array $arrParams)
     {
         $this->_sql = null;
-        $this->_queryType = self::EXTENDED_REPLACE;
+        $this->setQueryType(self::EXTENDED_REPLACE);
 
         if (! is_array($arrFields) || ! count($arrFields)) {
             throw new InvalidArgumentException("Error with the field type");
@@ -1125,9 +1166,9 @@ class Database
      * @param array $arrFields
      *            [optional]
      *            Optional list of fields to delete (used when including multiple tables)
-     * @param array $arrWhere
+     * @param array:DBWhere|DBWhere $arrWhere
      *            [optional]
-     *            Optional 2-dimensional array to build where clause from
+     *            Optional where clauses to use
      * @param array $arrJoins
      *            [optional]
      *            Optional 2-dimensional array to add other flags
@@ -1140,10 +1181,10 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function delete(string $strTableName, ?array $arrFields = [], ?array $arrWhere = [], ?array $arrJoins = [])
+    public function delete(string $strTableName, ?array $arrFields = [], $arrWhere = [], ?array $arrJoins = [])
     {
         $this->_sql = "DELETE";
-        $this->_queryType = self::DELETE;
+        $this->setQueryType(self::DELETE);
 
         $this->_logger->debug("Deleting table data");
 
@@ -1205,7 +1246,7 @@ class Database
     public function drop(string $strTableName, string $strType = 'table', bool $blnIsTemp = false)
     {
         $this->_sql = null;
-        $this->_queryType = self::DROP;
+        $this->setQueryType(self::DROP);
 
         switch ($strType) {
             case 'table':
@@ -1246,7 +1287,7 @@ class Database
     public function truncate(string $strTableName)
     {
         $this->_sql = null;
-        $this->_queryType = self::TRUNCATE;
+        $this->setQueryType(self::TRUNCATE);
 
         if (! is_null($strTableName) && is_string($strTableName)) {
             $this->_sql = "TRUNCATE TABLE $strTableName";
@@ -1281,7 +1322,7 @@ class Database
      */
     public function createTable(string $strTableName, bool $blnIsTemp = false, $strSelect = null)
     {
-        $this->_queryType = self::CREATE_TABLE;
+        $this->setQueryType(self::CREATE_TABLE);
 
         if (is_null($strSelect) && ! is_null($this->_sql) && substr($this->_sql, 0, 6) == 'SELECT') {
             $this->_sql = "CREATE" . ($blnIsTemp ? " TEMPORARY" : "") . " TABLE IF NOT EXISTS $strTableName AS ($this->_sql)";
@@ -1323,12 +1364,12 @@ class Database
      */
     public function createTableJson($json, bool $blnDropFirst = false)
     {
-        $this->_queryType = self::CREATE_TABLE;
+        $this->setQueryType(self::CREATE_TABLE);
         $this->_c->select_db($json->schema);
 
-        if($blnDropFirst) {
+        if ($blnDropFirst) {
             $this->drop($json->name);
-            if(!defined('PHP_DB_AUTORUN') || !PHP_DB_AUTORUN) {
+            if (!defined('PHP_DB_AUTORUN') || !PHP_DB_AUTORUN) {
                 $this->execute();
             }
         }
@@ -1419,7 +1460,7 @@ class Database
      */
     public function addColumn(string $strTableName, stdClass $params)
     {
-        $this->_queryType = self::ALTER_TABLE;
+        $this->setQueryType(self::ALTER_TABLE);
         $this->_sql = "ALTER TABLE {$strTableName} ADD COLUMN";
 
         if (!self::checkObject($params, ['name', 'dataType'])) {
@@ -1455,7 +1496,7 @@ class Database
      */
     public function dropColumn(string $strTableName, $params)
     {
-        $this->_queryType = self::ALTER_TABLE;
+        $this->setQueryType(self::ALTER_TABLE);
         $this->_sql = "ALTER TABLE {$strTableName} DROP COLUMN";
 
         if (is_array($params) && count($params)) {
@@ -1491,7 +1532,7 @@ class Database
      */
     public function modifyColumn($strTableName, $params)
     {
-        $this->_queryType = self::ALTER_TABLE;
+        $this->setQueryType(self::ALTER_TABLE);
         $this->_sql = "ALTER TABLE {$strTableName} MODIFY COLUMN";
 
         if (!self::checkObject($params, ['name', 'dataType'])) {
@@ -1533,7 +1574,7 @@ class Database
      */
     public function addConstraint($strTableName, $params)
     {
-        $this->_queryType = self::ALTER_TABLE;
+        $this->setQueryType(self::ALTER_TABLE);
         $this->_sql = "ALTER TABLE {$strTableName} ADD CONSTRAINT";
 
         if (!is_a($params, 'stdClass')) {
@@ -1706,7 +1747,7 @@ class Database
      * @param string $strTableName
      *            Table to search for
      *
-     * @return integer|bool Returns number of tables that match if table is found in that schema, otherwise FALSE
+     * @return int|bool Returns number of tables that match if table is found in that schema, otherwise FALSE
      *
      * @throws InvalidArgumentException
      */
@@ -1717,7 +1758,7 @@ class Database
             throw new InvalidArgumentException("Error connecting to schema {$strSchema}");
         }
 
-        if (preg_match("/[^A-Za-z0-9_%\-]/i", $strTableName)) {
+        if (preg_match("/[^A-Za-z0-9_\%\?\-]/i", $strTableName)) {
             $this->_logger->warning("Invalid table name {$strTableName}");
             return false;
         }
@@ -1768,9 +1809,7 @@ class Database
         if (is_null($val) || (is_string($val) && strtolower($val) == 'null')) {
             return 'NULL';
         } elseif (is_numeric($val) || is_string($val)) {
-            if (stripos($val, "IF(") !== false) {
-                return $val;
-            } elseif ($blnEscape) {
+            if ($blnEscape) {
                 return "'{$this->_c->real_escape_string($val)}'";
             }
             return $val;
@@ -1816,7 +1855,7 @@ class Database
 
         if (is_array($fields) && count($fields) && isset($fields[0]) && is_string($fields[0])) {
             foreach ($fields as $field) {
-                if ((strpos($field, '`') === false) && (strpos($field, '.') === false) && (strpos($field, '*') === false) && (strpos($field, 'JSON_') === false) && (stripos($field, ' as ') === false)) {
+                if ((strpos($field, '`') === false) && (strpos($field, '.') === false) && (strpos($field, '*') === false) && (strpos($field, 'JSON_') === false) && (stripos($field, ' as ') === false) && stripos($field, 'IF(') === false) {
                     $ret .= "`$field`,";
                 } else {
                     $ret .= "$field,";
