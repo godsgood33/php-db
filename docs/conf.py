@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'PHP_DB'
-copyright = '2019, Ryan Prather'
+copyright = '2020, Ryan Prather'
 author = 'Ryan Prather'
 
 # The short X.Y version
