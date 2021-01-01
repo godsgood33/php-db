@@ -22,10 +22,12 @@ Returns the ``mysqli_result`` object
 Examples:
 ---------
 
-    | $this->drop('members');
-    | // DROP TABLE IF EXISTS members
+::
 
-To delete a view
+    $this->drop('members');
+    // DROP TABLE IF EXISTS members
 
-    | $this->drop("active_members", "view");
-    | // DROP VIEW IF EXISTS active_members
+To delete a view::
+
+    $this->drop("active_members", "view");
+    // DROP VIEW IF EXISTS active_members

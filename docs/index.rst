@@ -8,6 +8,8 @@ Php-Db's documentation!
    setup
    DBWhere
    DBInterface
+   DBCreateTable
+   DBConst
    properties
    select
    selectCount

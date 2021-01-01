@@ -10,7 +10,9 @@ insert)
 Definition:
 -----------
 
-``$this->extendedReplace($strTableName, $arrFields, $arrParams);``
+::
+
+    $this->extendedReplace($strTableName, $arrFields, $arrParams);
 
 * strTableName - (string) Table name to update
 * arrFields - (array) Array of fields
@@ -25,9 +27,10 @@ Returns the number of affected rows
 Examples:
 ---------
 
-    | $this->extendedReplace("members",
-    | ['id', 'name', 'salary'], [
-    | [1, 'George Foreman', 100], [2, 'Curious George', 1000]
-    | ]);
-    | // REPLACE INTO members (`id`,`name`,`salary`) VALUES
-    | (1, 'George Foreman', 100), (2, 'Curious George', 1000)
+::
+
+    $this->extendedReplace("members", ['id', 'name', 'salary'], [
+        [1, 'George Foreman', 100], [2, 'Curious George', 1000]
+    ]);
+    // REPLACE INTO members (`id`,`name`,`salary`) VALUES
+        (1, 'George Foreman', 100), (2, 'Curious George', 1000)

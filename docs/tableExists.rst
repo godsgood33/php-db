@@ -10,7 +10,9 @@ allowed)
 Definition:
 -----------
 
-``$this->tableExists($strSchema, $strTableName)``
+::
+
+    $this->tableExists($strSchema, $strTableName)
 
 * strSchema - (string) The schema to check in
 * strTableName - (string) The table to look for
@@ -18,12 +20,14 @@ Definition:
 Examples:
 ---------
 
-    | $this->tableExists('db', 'members');
-    | // returns 1
+::
+
+    $this->tableExists('db', 'members');
+    // returns 1
 
 You can also use wildcards to find out how many table that match the wildcard
-exist
+exist::
 
-    | $this->tableExists('db', 'mem%');
-    | // also retuns 1 in our example, but could return more if something else
-    | matches the query
+    $this->tableExists('db', 'mem%');
+    // also retuns 1 in our example, but could return more if something else
+    matches the query

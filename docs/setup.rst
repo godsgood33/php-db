@@ -6,9 +6,6 @@ Installation
 
 ``composer require godsgood33\php_db``
 
-Setup
------
-
 Open a terminal window and navigate to your project path.
 
 The next thing is to decide if you want to encrypt your MySQL password, if you
@@ -19,13 +16,15 @@ Look at your list and select the one you want to use, then rerun
 ask you a few questions and print out a list that you will need to copy into a
 included file prior to creating your DB instance.  It will look something like
 
-    | define('PHP_DB_SERVER', '1.1.1.1');
-    | define('PHP_DB_USER', 'root');
-    | define('PHP_DB_PWD', '{this is your encrypted password}');
-    | define('PHP_DB_SCHEMA', 'test');
-    | define('PHP_DB_ENCRYPT', true);
-    | define('PHP_DB_ENCRYPT_ALGORITHM', 'AES-256-CBC-HMAC-SHA256');
-    | define('PHP_DB_ENCRYPT_SALT', '{this is your encryption salt}');
+::
+
+    define('PHP_DB_SERVER', '1.1.1.1');
+    define('PHP_DB_USER', 'root');
+    define('PHP_DB_PWD', '{this is your encrypted password}');
+    define('PHP_DB_SCHEMA', 'test');
+    define('PHP_DB_ENCRYPT', true);
+    define('PHP_DB_ENCRYPT_ALGORITHM', 'AES-256-CBC-HMAC-SHA256');
+    define('PHP_DB_ENCRYPT_SALT', '{this is your encryption salt}');
 
 - PHP_DB_SERVER can be an IP or hostname as long as it is accessible
 - PHP_DB_USER is the user that you want this tool to connect to the server with
@@ -35,11 +34,11 @@ included file prior to creating your DB instance.  It will look something like
 - PHP_DB_ENCRYPT is a boolean to decide if the password should be encrypted
     By entering an algorithm you selected you wanted to encrypt it.
 - PHP_DB_ENCRYPT_ALGORITHM is the algorithm you selected
-- PHP_DB_ENCRYPT_SALT is a pseudo random base encoded list of characters
+- PHP_DB_ENCRYPT_SALT is a pseudo random base64 encoded list of characters
     from ``openssl_random_pseudo_bytes``
 
 If you would like to autorun/commit the queries and have the methods return the
-result of the query, you can add a ``PHP_DB_AUTORUN`` boolean constant
+result of the query, you can add a ``PHP_DB_AUTORUN`` boolean constant::
 
     define('PHP_DB_AUTORUN', true);
 
@@ -54,7 +53,7 @@ The first parameter in almost all the functions is the table name you want to
 alter.  ``$this->select('{table_name}')`` The second parameter is the field
 list.  It will allow you to edit or retrieve specific fields from the table.
 You can add simple aliases to the table or fields and it will create a property
-in the returned fields with the name you specify.
+in the returned fields with the name you specify.::
 
     $this->select('users', ['id', "CONCAT('fname', ' ', 'lname') AS 'name'",
     "user_phone_number AS 'phone'"])

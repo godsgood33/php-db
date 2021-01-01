@@ -3,45 +3,35 @@ Class Properties
 
 Constants:
 ----------
-The class constants available for use within and outside the class
+The class constants available for use within the class::
 
-Class Actions:
-^^^^^^^^^^^^^^
-- ``SELECT              = 1``
-- ``SELECT_COUNT        = 2``
-- ``CREATE_TABLE        = 3``
-- ``DROP                = 4``
-- ``DELETE              = 5``
-- ``INSERT              = 6``
-- ``REPLACE             = 7``
-- ``UPDATE              = 8``
-- ``EXTENDED_INSERT     = 9``
-- ``EXTENDED_REPLACE    = 10``
-- ``EXTENDED_UPDATE     = 11``
-- ``ALTER_TABLE         = 12``
-- ``TRUNCATE            = 13``
+    SELECT              = 1
+    SELECT_COUNT        = 2
+    CREATE_TABLE        = 3
+    DROP                = 4
+    DELETE              = 5
+    INSERT              = 6
+    REPLACE             = 7
+    UPDATE              = 8
+    EXTENDED_INSERT     = 9
+    EXTENDED_REPLACE    = 10
+    EXTENDED_UPDATE     = 11
+    ALTER_TABLE         = 12
+    TRUNCATE            = 13
 
 Alter Table Actions:
 ^^^^^^^^^^^^^^^^^^^^
-- ``ADD_COLUMN          = 1``
-- ``DROP_COLUMN         = 2``
-- ``MODIFY_COLUMN       = 3``
-- ``ADD_CONSTRAINT      = 4``
+
+::
+
+    ADD_COLUMN          = 1
+    DROP_COLUMN         = 2
+    MODIFY_COLUMN       = 3
+    ADD_CONSTRAINT      = 4
 
 Properties:
 -----------
-The public, protected, and private variables used within the class
-
-Public:
-^^^^^^^
-+-------------+-------------+-------------------------------------------------+
-| Variable    |  Data Type  | Purpose                                         |
-+=============+=============+=================================================+
-| ``autorun`` |  boolean    | To decide if the query needs to execute right   |
-|             |             |  after creation                                 |
-+-------------+-------------+-------------------------------------------------+
-| ``cliLog``  |  boolean    | To decide if _logger needs to output to the CLI |
-+-------------+-------------+-------------------------------------------------+
+The protected and private variables used within the class
 
 Protected:
 ^^^^^^^^^^

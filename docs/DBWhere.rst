@@ -5,8 +5,6 @@ Purpose:
 --------
 This class allows you to easily create WHERE or HAVING clauses.
 
-.. _constants:
-
 Constants:
 ----------
 
@@ -20,6 +18,8 @@ Constants:
 
 Properties:
 -----------
+
+Below are all the properties for this class along where their default values and what they are intended to be used for
 
 - field = null
     - The DB field to query for (e.g. name, id, phone)
@@ -36,7 +36,7 @@ Properties:
 - operator = '='
     - The operator to check the field for
     - Can be any standard operator string (e.g. =, >, <, >=, <=)
-    - Can use the :ref:`constants` above
+    - Can use the constants above
 - sqlOperator = 'AND'
     - The SQL operator to bridge two or more clauses (e.g. AND, OR, NOR, XOR,
         etc)
@@ -49,7 +49,7 @@ Properties:
 - closeParen = false
     - To decide to end the clause with a closing paren
 - caseInsensitive = false
-    - To decide to make the question case case insensitive
+    - To decide to make the field case insensitive
     - ``LOWER(`name`) = LOWER('FRANK')``
 
 ``DBWhere($field = null, $value = null, $operator = '=')``
@@ -57,16 +57,29 @@ Properties:
 Examples:
 ---------
 
-1)
+1) WHERE `name` = 'Fred Flintstone'
+
+::
+
     $where = new DBWhere('name', 'Fred Flintstone');
-    // WHERE `name` = 'Fred Flintstone'
 
-2)
+2) WHERE `phone` IS NULL
+
+::
+
     $where = new DBWhere('phone', null, DBWhere::IS);
-    // WHERE `phone` IS NULL
 
-3)
-    | $where = new DBWhere('age', null, DBWhere::BETWEEN);
-    | $where->low = 20;
-    | $where->high = 30;
-    | // WHERE `age` BETWEEN 20 AND 30
+3) WHERE `age` BETWEEN 20 AND 30
+
+::
+
+    $where = new DBWhere('age', null, DBWhere::BETWEEN);
+    $where->low = 20;
+    $where->high = 30;
+
+4) WHERE m.gender = 'm'  // For example, 'm' alias may link to "member" table
+
+::
+
+    $where = new DBWhere('m.gender', 'm');
+    $where->backticks = false;

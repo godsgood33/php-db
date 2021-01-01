@@ -11,8 +11,9 @@ the update method hundreds or thousands of times.
 Definition:
 -----------
 
-``$this->extendedUpdate($strTableToUpdate, $strOriginalTable,
-$strLinkField, $arrParams);``
+::
+
+    $this->extendedUpdate($strTableToUpdate, $strOriginalTable, $strLinkField, $arrParams);
 
 * strTableToUpdate - (string) The table that you want to update (alias 'tbu'
     is automatically added)
@@ -59,10 +60,12 @@ The tmp_members_to_update table
  1    Horace    10
 ==== ======== ========
 
-    | $this->extendedUpdate("members", "tmp_members_to_update", "id",
-    | ['name', 'salary']);
-    | // UPDATE members tbu INNER JOIN tmp_members_to_update o USING (id)
-    | SET tbu.name = o.name, tbu.salary = o.salary
+::
+
+    $this->extendedUpdate("members", "tmp_members_to_update", "id",
+        ['name', 'salary']);
+    // UPDATE members tbu INNER JOIN tmp_members_to_update o USING (id)
+        SET tbu.name = o.name, tbu.salary = o.salary
 
 The members table would look like this after running the command
 
@@ -74,26 +77,13 @@ The members table would look like this after running the command
 ==== ======== ========
 
 You can also specify a single string column in the last parameter.
-If we assume the same previous table
+If we assume the same previous table::
 
-==== ====== ========
- id   name   salary
----- ------ --------
- 1   George  1
- 2   Frank   2
-==== ====== ========
+    $this->extendedUpdate("membes", "tmp_members_to_update", "id", "name");
+    // UPDATE members tbu INNER JOIN tmp_members_to_update o USING (id)
+        SET tbu.name = o.name
 
-The tmp_members_to_update table
-
-==== ======== ========
- id   name     salary
----- -------- --------
- 1    Horace    10
-==== ======== ========
-
-    | $this->extendedUpdate("membes", "tmp_members_to_update", "id", "name");
-    | // UPDATE members tbu INNER JOIN tmp_members_to_update o USING (id)
-    | SET tbu.name = o.name
+The result would have looked like this and would not have updated the ``salary``
 
 ==== ======== ========
  id   name     salary

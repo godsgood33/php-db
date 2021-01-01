@@ -11,20 +11,22 @@ found in the /examples directory).
 Definition:
 -----------
 
-``$this->createTable($strTableName, $blnIsTemp = false, $strSelect = null)``
+    $this->createTable($strTableName, $blnIsTemp = false, $strSelect = null)
 
 * strTableName - (string) What to name the new table
 * blnIsTemp - (boolean) Is this supposed to be a temporary table
-* strSelect - (string|array) The definition of the table
+* strSelect - (string|array|DBCreateTable|array:DBCreateTable) The definition of the table
     * String - Usually a SELECT SQL statement to populate the table with
-    * Array - Array of arrays that store the definition of the table
+    * DBCreateTable - An individual object for creating a table
+    * array:DBCreateTable - An array of objects for creating the table
+    * Array - Array of arrays that store the definition of the table::
 
-``[
-'field' => 'field_name',
-'datatype' => '{standard SQL datatypes}',
-'default' => null,
-'option' => '{optional values, e.g. AUTO_INCREMENT, PRIMARY KEY, UNIQUE, etc)}'
-]``
+        [
+            'field' => 'field_name',
+            'datatype' => '{standard SQL datatypes}',
+            'default' => null,
+            'option' => '{optional values, e.g. AUTO_INCREMENT, PRIMARY KEY, UNIQUE, NOT NULL, etc)}'
+        ]
 
 Returns:
 --------
@@ -35,21 +37,51 @@ Returns a ``mysqli_result`` object
 Examples:
 ---------
 
-Create a table given an array definition
+Create a table with the ``DBCreateTable`` class::
 
-``$this->createTable('test', false, [['field' => 'id','datatype' => 'int(11)',
-'option' => 'AUTO_INCREMENT PRIMARY KEY'],['field' => 'name','datatype' =>
-'varchar(100)'],['field' => 'active','datatype' => 'tinyint(1)','default' =>
-'0']]);``
+    $idField = new DBCreateTable('id', DBConst::Key, null, 'AUTO_INCREMENT PRIMARY KEY');
+    $nameField = new DBCreateTable('name', DBConst::ShortString);
+    $emailField = new DBCreateTable('email', DBConst::Email);
+    $this->createTable('test', false, [
+        $idField,
+        $nameField,
+        $emailField
+    ]);
 
-``CREATE TABLE IF NOT EXISTS test (id int(11) AUTO_INCREMENT PRIMARY KEY, name
-varchar(100), active tinyint(1) DEFAULT '0')``
+**SQL Statement**::
 
-Create a table given a SQL SELECT statement
+    CREATE TABLE IF NOT EXISTS test (`id` int(11) AUTO_INCREMENT PRIMARY KEY, `name` varchar(100), `email` varchar(100))
 
-``$this->createTable('test', true, "SELECT * FROM users WHERE active = '1'")``;
+Create a table given an array definition::
 
-``CREATE TABLE IF NOT EXISTS test SELECT * FROM users WHERE active = '1'``
+    $this->createTable('test', false, [
+        [
+            'field' => 'id',
+            'datatype' => 'int(11)',
+            'option' => 'AUTO_INCREMENT PRIMARY KEY'
+        ],
+        [
+            'field' => 'name',
+            'datatype' => 'varchar(100)'
+        ],
+        [
+            'field' => 'active',
+            'datatype' => 'tinyint(1)',
+            'default' => '0'
+        ]
+    ]);
+
+**SQL Statement**::
+
+    CREATE TABLE IF NOT EXISTS test (`id` int(11) AUTO_INCREMENT PRIMARY KEY, `name` varchar(100), `active` tinyint(1) DEFAULT '0')
+
+Create a table given a SQL SELECT statement::
+
+    $this->createTable('test', true, "SELECT * FROM users WHERE active = '1'")``;
+
+**SQL Statement**::
+
+    CREATE TABLE IF NOT EXISTS test SELECT * FROM users WHERE active = '1'``
 
 Create Table JSON
 =================
@@ -95,17 +127,17 @@ Returns:
 Examples:
 ---------
 There are example formats in the /examples directory, but to pass it to the
-method use something similar to the following:
+method use something similar to the following::
 
-    | $txt = file_get_contents('/examples/create_table_json.json');
-    | $json = json_decode($txt);
-    | foreach($json->tables as $t) {
-    |     $this->createTableJson($t);
-    | }
+    $txt = file_get_contents('/examples/create_table_json.json');
+    $json = json_decode($txt);
+    foreach($json->tables as $t) {
+        $this->createTableJson($t);
+    }
 
 If you have any constraints you want to apply, we recommend looping over the
-constraints as suggest above after you create the tables
+constraints as suggest above after you create the tables::
 
-    | foreach($json->table_constraints as $tc) {
-    |     $this->addConstraint($tc);
-    | }
+    foreach($json->table_constraints as $tc) {
+        $this->addConstraint($tc);
+    }

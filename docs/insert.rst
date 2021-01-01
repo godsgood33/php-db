@@ -10,7 +10,9 @@ table columns so they have to be exactly as they are defined in the table
 Definition:
 -----------
 
-``$this->insert($strTableName, $arrParams = null, $blnToIgnore = false);``
+::
+
+    $this->insert($strTableName, $arrParams = null, $blnToIgnore = false);
 
 * strTableName - (string) name of the table to insert the data in
 * arrParams - (string|array|object)
@@ -31,19 +33,19 @@ element
 Examples:
 ---------
 
-This will create an insert query for a single entry to the database
+This will create an insert query for a single entry to the database::
 
-    | $this->insert('member', [
-    | 'id' => 1, 'name' => 'George Foreman', 'salary' => 1
-    | ]);
-    | // INSERT INTO member (`id`, `name`, `salary`) VALUES
-    | (1, 'George Foreman', 1)
+    $this->insert('member', [
+        'id' => 1, 'name' => 'George Foreman', 'salary' => 1
+    ]);
+    // INSERT INTO member (`id`, `name`, `salary`) VALUES
+        (1, 'George Foreman', 1)
 
 A 3rd boolean parameters allows you to add a "IGNORE" in the insert just in
-case the row already exists
+case the row already exists::
 
-    | $this->insert('member', [
-    | 'id' => 1, 'name' => 'George Foreman', 'salary' => 1
-    | ], true);
-    | // INSERT IGNORE INTO member (`id`, `name`, `salary`) VALUES
-    | (1, 'George Foreman', 1)
+    $this->insert('member', [
+        'id' => 1, 'name' => 'George Foreman', 'salary' => 1
+    ], true);
+    // INSERT IGNORE INTO member (`id`, `name`, `salary`) VALUES
+        (1, 'George Foreman', 1)
