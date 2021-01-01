@@ -36,12 +36,12 @@ class DBCreateTable
      */
     public function __construct(string $field, string $datatype, ?string $default = null, ?string $option = null)
     {
-		$this->data = [
-			'field' => $field,
-			'datatype' => $datatype,
-			'default' => $default,
-			'option' => $option
-		];
+        $this->data = [
+            'field' => $field,
+            'datatype' => $datatype,
+            'default' => $default,
+            'option' => $option
+        ];
     }
 
     /**
@@ -75,6 +75,6 @@ class DBCreateTable
         $default = (isset($this->data['default']) ? $this->data['default'] : null);
         $option = (isset($this->data['option']) ? $this->data['option'] : null);
 
-        return "`{$this->data['field']}` {$this->data['datatype']}" . (!is_null($default) ? " {$default}" : null) . (!is_null($option) ? " {$option}" : null);
+        return "`{$this->data['field']}` {$this->data['datatype']}" . ($default !== null ? " DEFAULT '{$default}'" : null) . (!is_null($option) ? " {$option}" : null);
     }
 }
