@@ -495,9 +495,7 @@ class Database
         $this->_result = false;
         $this->_insertId = null;
 
-        if (!$this->isConnected()) {
-            throw new ConnectError("Database connection lost");
-        }
+        $this->isConnected();
 
         $this->_logger->info("Executing {$this->_queryType} query");
         $this->_logger->debug($this->_sql);
@@ -651,14 +649,11 @@ class Database
         $this->setQueryType(self::SELECT);
 
         // starting building the query
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_logger->debug("Starting SELECT query of {$strTableName}", [
                 'fields' => $this->fields($fields)
             ]);
             $this->_sql = "SELECT " . $this->fields($fields) . " FROM $strTableName";
-        } else {
-            $this->_logger->emergency("Table name is invalid or wrong type", [debug_backtrace()]);
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         // add in any joins
@@ -727,11 +722,8 @@ class Database
         $this->setQueryType(self::SELECT_COUNT);
 
         // start building query
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_sql = "SELECT COUNT(1) AS 'count' FROM $strTableName";
-        } else {
-            $this->_logger->emergency("Table name is invalid or wrong type", [debug_backtrace()]);
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         // add in any joins
@@ -788,10 +780,8 @@ class Database
         $this->setQueryType(self::INSERT);
 
         // start building query
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_sql = "INSERT" . ($blnToIgnore ? " IGNORE" : "") . " INTO {$strTableName}";
-        } else {
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         // add in field parameters and values
@@ -852,10 +842,8 @@ class Database
         $this->setQueryType(self::EXTENDED_INSERT);
 
         // start building query
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_sql = "INSERT " . ($blnToIgnore ? "IGNORE " : "") . "INTO $strTableName " . "(`" . implode("`,`", $arrFields) . "`)";
-        } else {
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (is_array($params) && count($params)) {
@@ -931,7 +919,7 @@ class Database
         $this->_sql = "UPDATE ";
         $this->setQueryType(self::UPDATE);
 
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_sql .= $strTableName;
 
             if (isset($arrFlags['joins']) && is_array($arrFlags['joins'])) {
@@ -940,8 +928,6 @@ class Database
             }
 
             $this->_sql .= " SET ";
-        } else {
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -1034,8 +1020,6 @@ class Database
 
         if (! is_null($strTableToUpdate) && ! is_null($strOriginalTable) && ! is_null($strLinkField)) {
             $this->_sql .= "$strTableToUpdate tbu INNER JOIN $strOriginalTable o USING ($strLinkField) SET ";
-        } else {
-            throw new InvalidArgumentException("Missing necessary fields");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -1075,10 +1059,8 @@ class Database
         $this->_sql = null;
         $this->setQueryType(self::REPLACE);
 
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_sql = "REPLACE INTO $strTableName ";
-        } else {
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -1131,10 +1113,8 @@ class Database
             throw new InvalidArgumentException("Error with the field type");
         }
 
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_sql = "REPLACE INTO $strTableName " . "(`" . implode("`,`", $arrFields) . "`)";
-        } else {
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (is_array($arrParams) && count($arrParams)) {
@@ -1192,10 +1172,8 @@ class Database
             $this->_sql .= " " . implode(",", $arrFields);
         }
 
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_sql .= " FROM $strTableName";
-        } else {
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (! is_null($arrJoins) && is_array($arrJoins) && count($arrJoins)) {
@@ -1259,10 +1237,8 @@ class Database
                 throw new InvalidArgumentException("Invalid type " . gettype($strType), E_ERROR);
         }
 
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_sql = "DROP" . ($blnIsTemp ? " TEMPORARY" : "") . " $strType IF EXISTS `{$strTableName}`";
-        } else {
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -1289,10 +1265,8 @@ class Database
         $this->_sql = null;
         $this->setQueryType(self::TRUNCATE);
 
-        if (! is_null($strTableName) && is_string($strTableName)) {
+        if ($this->checkTableName($strTableName)) {
             $this->_sql = "TRUNCATE TABLE $strTableName";
-        } else {
-            throw new InvalidArgumentException("Table name is invalid");
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -1326,9 +1300,9 @@ class Database
 
         if (is_null($strSelect) && ! is_null($this->_sql) && substr($this->_sql, 0, 6) == 'SELECT') {
             $this->_sql = "CREATE" . ($blnIsTemp ? " TEMPORARY" : "") . " TABLE IF NOT EXISTS $strTableName AS ($this->_sql)";
-        } elseif (! is_null($strTableName) && is_string($strTableName) && is_string($strSelect)) {
+        } elseif ($this->checkTableName($strTableName) && is_string($strSelect)) {
             $this->_sql = "CREATE" . ($blnIsTemp ? " TEMPORARY" : "") . " TABLE IF NOT EXISTS $strTableName AS ($strSelect)";
-        } elseif (! is_null($strTableName) && is_string($strTableName) && is_array($strSelect)) {
+        } elseif ($this->checkTableName($strTableName) && is_array($strSelect)) {
             $this->_sql = "CREATE" . ($blnIsTemp ? " TEMPORARY" : "") . " TABLE IF NOT EXISTS $strTableName (";
 
             foreach ($strSelect as $field) {
@@ -1461,6 +1435,8 @@ class Database
     public function addColumn(string $strTableName, stdClass $params)
     {
         $this->setQueryType(self::ALTER_TABLE);
+        $this->checkTableName($strTableName);
+
         $this->_sql = "ALTER TABLE {$strTableName} ADD COLUMN";
 
         if (!self::checkObject($params, ['name', 'dataType'])) {
@@ -1685,12 +1661,13 @@ class Database
      *
      * @return array|string
      */
-    public function fieldCheck(stdClass $field_data, stdClass $check, array $pks, stdClass $index)
+    public function fieldCheck(stdClass $field_data, stdClass $check, array $pks, ?array $index)
     {
         $default = null;
         $ret = null;
 
         $nn = (isset($check->nn) && $check->nn ? " NOT NULL" : null);
+
         if ($check->default === null) {
             $default = " DEFAULT NULL";
         } elseif (strlen($check->default)) {
@@ -1758,7 +1735,7 @@ class Database
             throw new InvalidArgumentException("Error connecting to schema {$strSchema}");
         }
 
-        if (preg_match("/[^A-Za-z0-9_\%\?\-]/i", $strTableName)) {
+        if (preg_match("/[^0-9a-zA-Z\%\?\_]/", $strTableName)) {
             $this->_logger->warning("Invalid table name {$strTableName}");
             return false;
         }
@@ -1769,10 +1746,8 @@ class Database
             if (gettype($res) == 'object' && is_a($res, 'mysqli_result') && $res->num_rows) {
                 return $res->num_rows;
             }
-        } else {
-            if ($this->_c->errno) {
-                $this->_logger->error($this->_c->error);
-            }
+        } elseif ($this->_c->errno) {
+            $this->_logger->error($this->_c->error);
         }
 
         return false;
@@ -1992,6 +1967,20 @@ class Database
         }
 
         return $ret;
+    }
+
+    /**
+     * Method to check if there are any invalid characters in the table name
+     *
+     * @param string $strTableName
+     *      Table name passed in
+     *
+     * @return bool
+     *      Returns FALSE if table name contains any characters that will be problematic (0-9, a-z, A-Z, $, _), TRUE otherwise
+     */
+    private function checkTableName(string $strTableName): bool
+    {
+        return !strlen($strTableName) || preg_match("/[^0-9a-zA-Z\$\_\ ]/", $strTableName) ? false : true;
     }
 
     /**
