@@ -51,18 +51,14 @@ class DBCreateTable
      * @param string|int|null $value
      *
      * @throws InvalidArgumentException
-     *
-     * @return DBCreateTable
      */
-    public function __set(string $name, $value): DBCreateTable
+    public function __set(string $name, $value)
     {
-        if (in_array($name, ['field', 'datatype', 'default', 'option'])) {
-            $this->data[$name] = $value;
-        } else {
+        if (!in_array($name, ['field', 'datatype', 'default', 'option'])) {
             throw new InvalidArgumentException("Invalid property in CreateTable");
         }
 
-        return $this;
+        $this->data[$name] = $value;
     }
 
     /**
