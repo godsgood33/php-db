@@ -177,7 +177,7 @@ class Database
      * @access private
      * @var string
      */
-    private $_sql = null;
+    private $_sql = '';
 
     /**
      * A variable to store the type of query that is being run
@@ -199,7 +199,7 @@ class Database
      * Log level
      *
      * @access private
-     * @var string
+     * @var int
      */
     private $_logLevel = Logger::ERROR;
 
@@ -397,7 +397,7 @@ class Database
      *
      * @return string|null
      */
-    public function __toString(): ?string
+    public function __toString(): string
     {
         $this->_logger->notice("__toString");
         $this->_logger->debug($this->_sql);
@@ -613,7 +613,7 @@ class Database
      *            [optional]
      *            Optional query to pass in and execute
      *
-     * @return mysqli_result|bool
+     * @return \mysqli_result|bool
      */
     public function query(?string $strSql = null)
     {
@@ -710,7 +710,7 @@ class Database
      *
      * @see Database::flags()
      *
-     * @return int|NULL
+     * @return string|int|NULL
      *
      * @throws InvalidArgumentException
      *
@@ -797,8 +797,8 @@ class Database
             $this->_sql .= " {$arrParams}";
         } elseif (is_object($arrParams)) {
             $interfaces = class_implements($arrParams);
-            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::insert")) {
-                $params = call_user_func([$arrParams, "insert"]);
+            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable([$arrParams, 'insert'])) {
+                $params = $arrParams->insert();
                 $this->_sql .= " (`" . implode("`,`", array_keys($params)) . "`) VALUES ";
                 $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
             } else {
@@ -869,10 +869,10 @@ class Database
                     throw new MissingInterfaceAndMethods("Object does not implement DBInterface interface and methods");
                 }
                 foreach ($params as $param) {
-                    if (!is_callable(get_class($param) . "::insert")) {
+                    if (!is_callable([$param, 'insert'])) {
                         throw new MissingInterfaceAndMethods("Cannot call insert method");
                     }
-                    $key_value = call_user_func([$param, "insert"]);
+                    $key_value = $param->insert();
                     $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($key_value))) . "),";
                 }
                 $this->_sql = substr($this->_sql, 0, -1);
@@ -950,8 +950,8 @@ class Database
             }
         } elseif (is_object($arrParams)) {
             $interfaces = class_implements($arrParams);
-            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::update")) {
-                $params = call_user_func([$arrParams, "update"]);
+            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable([$arrParams, 'update'])) {
+                $params = $arrParams->update();
                 $fields = array_keys($params);
                 $values = array_map([$this, '_escape'], array_values($params));
                 foreach ($fields as $x => $f) {
@@ -1074,8 +1074,8 @@ class Database
             ], array_values($vals))) . ")";
         } elseif (is_object($arrParams)) {
             $interfaces = class_implements($arrParams);
-            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($arrParams) . "::replace")) {
-                $params = call_user_func([$arrParams, "replace"]);
+            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable([$arrParams, 'replace'])) {
+                $params = $arrParams->replace();
                 $this->_sql .= "(`" . implode("`,`", array_keys($params)) . "`) VALUES ";
                 $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
             }
@@ -1820,7 +1820,7 @@ class Database
      *            [optional]
      *            Optional array of fields to string together to create a field list
      *
-     * @return string
+     * @return string|null
      *
      * @throws InvalidArgumentException
      */
@@ -2031,9 +2031,8 @@ class Database
             $v = $this->_escape($where->value, $where->escape);
             $where->value = $v;
             $ret[] = $where;
-        } elseif (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable(get_class($where) . "::where")) {
-            $params = call_user_func([$where, "where"]);
-            $ret = $this->parseClause($params);
+        } elseif (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable([$where, 'where'])) {
+            $ret = $this->parseClause($where->where());
         } else {
             $this->_logger->warning("Failed to get where", [$where]);
         }
