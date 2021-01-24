@@ -11,10 +11,12 @@ Definition:
 
 ::
 
-    $this->update($strTableName, $arrParams, $arrWhere = [], $arrFlags = []);
+    $this->update($strTableName, $params, $arrWhere = [], $arrFlags = []);
 
 * strTableName - (string) The table name to update
-* arrParams - (array) Name/value pairs of the field name and value
+* params - (mixed)
+    * Array - Name/value pairs of the field name and value
+    * Object - An object that implements the DBInterface interface and has an update method to pull the info from
 * arrWhere - (DBWhere|array:DBWhare)
 * arrFlags - (array) Two-dimensional array to create other flag options
     (joins, order, and group)

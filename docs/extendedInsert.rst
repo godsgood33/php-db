@@ -16,10 +16,12 @@ Definition:
 
 * strTableName - (string) The table to query
 * arrFields - (array) The field names
-* params - (array|string)
-    * Array - 2-dimensional array of values (must have same number of values
-        as fields
+* params - (mixed)
+    * Array - 2-dimensional array of values (must have same number of values as fields)
     * String - just like insert can be INSERT...SELECT statement
+    * Object - an object that implements DBInterface interface
+    * Collection - an object that implements IteratorAggregate interface
+    * Object Array - just like a collection, but a primative array
 * blnToIgnore - (boolean) used to decide if it needs to be a INSERT IGNORE
     statement
 

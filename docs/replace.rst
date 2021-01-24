@@ -12,10 +12,12 @@ Definition:
 
 ::
 
-    $this->replace($strTableName, $arrParams);
+    $this->replace($strTableName, $params);
 
 * strTableName - (string) The table to update
-* arrParams - (array) Name/value pair to insert
+* params - (mixed)
+    * Array - A key/value pair.  Keys are used as field names, values are used as field values
+    * Object - An object that implements the DBInterface interface and require `replace` method
 
 Returns:
 --------

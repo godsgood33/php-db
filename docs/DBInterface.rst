@@ -42,6 +42,7 @@ these because of constraints that are in place.
 ::
 
     [
+        'id' => $this->id,
         'fname' => $this->fname,
         'lname' => $this->lname,
         'phone' => $this->phone,
@@ -82,3 +83,6 @@ This method can return a DBWhere or array of DBWhere objects.  Most commonly you
             new DBWhere('email', $this->email),
         ];
     }
+
+    // WHERE `id` = {$this->id}
+    // WHERE `lname` = '{$this->lname}' AND `email` = '{$this->email}'
