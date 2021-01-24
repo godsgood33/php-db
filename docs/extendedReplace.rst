@@ -12,11 +12,14 @@ Definition:
 
 ::
 
-    $this->extendedReplace($strTableName, $arrFields, $arrParams);
+    $this->extendedReplace($strTableName, $arrFields, $params);
 
 * strTableName - (string) Table name to update
 * arrFields - (array) Array of fields
-* arrParams - (array) 2-dimensional array of values
+* params - (mixed)
+    * Array - 2-dimensional array of values
+    * Collection - An object that implements IteratorAggregate interface and contains an array of objects
+    * Object Array - Just like the collection except a primative array
 
 Returns:
 --------

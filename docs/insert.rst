@@ -12,14 +12,13 @@ Definition:
 
 ::
 
-    $this->insert($strTableName, $arrParams = null, $blnToIgnore = false);
+    $this->insert($strTableName, $params, $blnToIgnore = false);
 
 * strTableName - (string) name of the table to insert the data in
-* arrParams - (string|array|object)
-    * String - acts like a INSERT...SELECT statement
-    * Array - use associative array ``field_name => value`` pairs
-    * Object - if implement DBInterface then have the ``insert`` method return
-        required values
+* params - (mixed)
+    * String - Acts like a INSERT...SELECT statement
+    * Array - Use associative array ``field_name => value`` pairs
+    * Object - Implements the DBInterface and has required `insert` method
 * blnToIgnore - (boolean) used to decide if it needs to be a INSERT IGNORE
     statement
 
