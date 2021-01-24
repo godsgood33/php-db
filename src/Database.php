@@ -10,7 +10,7 @@ use Monolog\Logger;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\StreamHandler;
 
-use Godsgood33\Php_Db\Exceptions\MissingParams;
+use Godsgood33\Php_Db\Exceptions\MissingOrInvalidParam;
 use Godsgood33\Php_Db\Exceptions\ConnectError;
 use Godsgood33\Php_Db\Exceptions\MissingInterfaceAndMethods;
 use Godsgood33\Php_Db\Exceptions\QueryError;
@@ -43,6 +43,39 @@ define('MYSQL_DATETIME', 'Y-m-d H:i:s');
  */
 class Database
 {
+
+    /**
+     * Constant defining parameters as a collection of objects
+     *
+     * @var int
+     */
+    private const COLLECTION = 1;
+
+    /**
+     * Constant defining parameters as an array
+     *
+     * @var int
+     */
+    private const ARRAY = 2;
+
+    /**
+     * Constant defining parameters as an objects
+     *
+     * @var int
+     */
+    private const OBJECT = 3;
+
+    /**
+     * Constant defining parameters as a string
+     *
+     * @var int
+     */
+    private const STRING = 4;
+
+    /**
+     * Constant defining parameters as an array of objects
+     */
+    private const ARRAY_OBJECT = 5;
 
     /**
      * Constant defining a SELECT query
@@ -282,10 +315,10 @@ class Database
             $this->_c = $dbh;
         } elseif (!defined('PHP_DB_SERVER') || !defined('PHP_DB_USER') || !defined('PHP_DB_PWD') || !defined('PHP_DB_SCHEMA')) {
             $this->_logger->critical("Missing essential defined constants");
-            throw new MissingParams("Please create and include a constant file with the following constants defining your DB connection (PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA)", E_USER_ERROR);
+            throw new MissingOrInvalidParam("Please create and include a constant file with the following constants defining your DB connection (PHP_DB_SERVER, PHP_DB_USER, PHP_DB_PWD, PHP_DB_SCHEMA)", E_USER_ERROR);
         } elseif (defined('PHP_DB_ENCRYPT') && (!defined('PHP_DB_ENCRYPT_ALGORITHM') || !defined('PHP_DB_ENCRYPT_SALT'))) {
             $this->_logger->critical("Missing essential encryption constants");
-            throw new MissingParams("Missing required PHP_DB_ENCRYPT_ALGORITHM or PHP_DB_ENCRYPT_SALT constants");
+            throw new MissingOrInvalidParam("Missing required PHP_DB_ENCRYPT_ALGORITHM or PHP_DB_ENCRYPT_SALT constants");
         }
 
         // check to see if the password is encrypted and decrypt if it is
@@ -764,7 +797,7 @@ class Database
      * Function to build an insert query statement
      *
      * @param string $strTableName
-     * @param array|string $arrParams
+     * @param mixed $arrParams
      * @param bool $blnToIgnore
      *
      * @return string|NULL
@@ -774,7 +807,7 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function insert(string $strTableName, $arrParams = null, bool $blnToIgnore = false)
+    public function insert(string $strTableName, $params, bool $blnToIgnore = false)
     {
         $this->_sql = null;
         $this->setQueryType(self::INSERT);
@@ -784,28 +817,27 @@ class Database
             $this->_sql = "INSERT" . ($blnToIgnore ? " IGNORE" : "") . " INTO {$strTableName}";
         }
 
+        $paramType = $this->checkParamType($params);
+
         // add in field parameters and values
-        if (is_array($arrParams) && count($arrParams)) {
-            if (is_array($arrParams) && count($arrParams)) {
-                $this->_sql .= " (`" . implode("`,`", array_keys($arrParams)) . "`)";
-            }
+        if ($paramType == self::ARRAY) {
+            $keys = array_keys($params);
+            $vals = array_values($params);
+            $this->_sql .= " (`" . implode("`,`", $keys) . "`)";
             $this->_sql .= " VALUES (" . implode(",", array_map([
                 $this,
                 '_escape'
-            ], array_values($arrParams))) . ")";
-        } elseif (is_string($arrParams) && stripos($arrParams, 'select') !== false) {
-            $this->_sql .= " {$arrParams}";
-        } elseif (is_object($arrParams)) {
-            $interfaces = class_implements($arrParams);
-            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable([$arrParams, 'insert'])) {
-                $params = $arrParams->insert();
-                $this->_sql .= " (`" . implode("`,`", array_keys($params)) . "`) VALUES ";
-                $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
-            } else {
-                throw new MissingInterfaceAndMethods("Object does not implement the DBInterface interface and methods");
-            }
+            ], $vals)) . ")";
+        } elseif ($paramType == self::STRING) {
+            $this->_sql .= " {$params}";
+        } elseif ($paramType == self::OBJECT) {
+            $arr = $params->insert();
+            $keys = array_keys($arr);
+            $vals = array_values($arr);
+            $this->_sql .= " (`" . implode("`,`", $keys) . "`) VALUES ";
+            $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], $vals)) . ")";
         } else {
-            throw new InvalidArgumentException("Invalid type passed to insert " . gettype($arrParams));
+            throw new InvalidArgumentException("Invalid type passed to insert " . gettype($params));
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -822,7 +854,7 @@ class Database
      *            The table name that the data is going to be inserted on
      * @param array $arrFields
      *            An array of field names that each value represents
-     * @param array|string $params
+     * @param mixed $params
      *            An array of array of values or a string with a SELECT statement to populate the insert with
      * @param bool $blnToIgnore
      *            [optional]
@@ -831,7 +863,7 @@ class Database
      * @return NULL|string Returns the SQL if self::$autorun is set to false, else it returns the output from running.
      *
      * @throws InvalidArgumentException
-     * @throws MissingParams
+     * @throws MissingOrInvalidParam
      * @throws MissingInterfaceAndMethods
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
@@ -843,44 +875,42 @@ class Database
 
         // start building query
         if ($this->checkTableName($strTableName)) {
-            $this->_sql = "INSERT " . ($blnToIgnore ? "IGNORE " : "") . "INTO $strTableName " . "(`" . implode("`,`", $arrFields) . "`)";
+            $this->_sql = "INSERT ".
+                ($blnToIgnore ? "IGNORE " : "").
+                "INTO $strTableName ".
+                "(`".implode("`,`", $arrFields)."`)";
         }
 
-        if (is_array($params) && count($params)) {
-            $this->_sql .= " VALUES ";
-            if (isset($params[0]) && is_array($params[0])) {
-                foreach ($params as $p) {
-                    if (count($p) != count($arrFields)) {
-                        $this->_logger->emergency("Inconsistent number of fields to values in extendedInsert", [
-                            $p,
-                            debug_backtrace()
-                        ]);
-                        throw new MissingParams("Inconsistent number of fields in fields and values in extendedInsert " . print_r($p, true));
-                    }
-                    $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($p))) . ")";
+        $paramType = $this->checkParamType($params);
+        $this->_sql .= " VALUES ";
 
-                    if ($p != end($params)) {
-                        $this->_sql .= ",";
-                    }
+        if ($paramType == self::COLLECTION || $paramType == self::ARRAY_OBJECT) {
+            foreach ($params as $p) {
+                $key_value = $p->insert();
+                $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($key_value))) . "),";
+            }
+
+            $this->_sql = substr($this->_sql, 0, -1);
+        } elseif ($paramType == self::OBJECT) {
+            $key_value = $params->insert();
+            $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($key_value))) . "),";
+        } elseif ($paramType == self::ARRAY) {
+            foreach ($params as $p) {
+                if (count($p) != count($arrFields)) {
+                    $this->_logger->emergency("Inconsistent number of fields to values in extendedInsert", [
+                        $p,
+                        debug_backtrace()
+                    ]);
+                    throw new MissingOrInvalidParam("Inconsistent number of fields in fields and values in extendedInsert " . print_r($p, true));
                 }
-            } elseif (isset($params[0]) && is_object($params[0])) {
-                $interfaces = class_implements($params[0]);
-                if (!in_array("Godsgood33\Php_Db\DBInterface", $interfaces)) {
-                    throw new MissingInterfaceAndMethods("Object does not implement DBInterface interface and methods");
+                $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($p))) . ")";
+
+                if ($p != end($params)) {
+                    $this->_sql .= ",";
                 }
-                foreach ($params as $param) {
-                    if (!is_callable([$param, 'insert'])) {
-                        throw new MissingInterfaceAndMethods("Cannot call insert method");
-                    }
-                    $key_value = $param->insert();
-                    $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($key_value))) . "),";
-                }
-                $this->_sql = substr($this->_sql, 0, -1);
-            } else {
-                $this->_sql .= "(" . implode("),(", array_map([$this, '_escape'], array_values($params))) . ")";
             }
         } else {
-            throw new InvalidArgumentException("Invalid param type");
+            throw new InvalidArgumentException("Invalid param type ".gettype($params));
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -895,7 +925,7 @@ class Database
      *
      * @param string $strTableName
      *            The table name to update
-     * @param array $arrParams
+     * @param mixed $arrParams
      *            Name/value pairs of the field name and value
      * @param array:DBWhere|DBWhere $arrWhere
      *            [optional]
@@ -909,12 +939,12 @@ class Database
      * @return NULL|string
      *
      * @throws InvalidArgumentException
-     * @throws MissingParams
+     * @throws MissingOrInvalidParam
      * @throws MissingInterfaceAndMethods
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function update(string $strTableName, $arrParams, $arrWhere = [], ?array $arrFlags = [])
+    public function update(string $strTableName, $params, $arrWhere = [], ?array $arrFlags = [])
     {
         $this->_sql = "UPDATE ";
         $this->setQueryType(self::UPDATE);
@@ -930,11 +960,17 @@ class Database
             $this->_sql .= " SET ";
         }
 
-        if (is_array($arrParams) && count($arrParams)) {
-            $keys = array_keys($arrParams);
-            foreach ($arrParams as $f => $p) {
+        $paramType = $this->checkParamType($params);
+
+        if ($paramType == self::ARRAY) {
+            $keys = array_keys($params);
+            foreach ($params as $f => $p) {
                 $field = $f;
-                if ((strpos($f, "`") === false) && (strpos($f, ".") === false) && (strpos($f, "*") === false) && (stripos($f, " as ") === false)) {
+                if ((strpos($f, "`") === false) &&
+                    (strpos($f, ".") === false) &&
+                    (strpos($f, "*") === false) &&
+                    (stripos($f, " as ") === false)
+                ) {
                     $field = "`{$f}`";
                 }
 
@@ -948,23 +984,30 @@ class Database
                     $this->_sql .= ",";
                 }
             }
-        } elseif (is_object($arrParams)) {
-            $interfaces = class_implements($arrParams);
-            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable([$arrParams, 'update'])) {
-                $params = $arrParams->update();
-                $fields = array_keys($params);
-                $values = array_map([$this, '_escape'], array_values($params));
+        } elseif ($paramType == self::OBJECT) {
+            $key_value = $params->update();
+            $fields = array_keys($key_value);
+            $values = array_map([$this, '_escape'], array_values($key_value));
+            foreach ($fields as $x => $f) {
+                if ($x > 0) {
+                    $this->_sql .= ",";
+                }
+                $this->_sql .= "`{$f}`={$values[$x]}";
+            }
+        } elseif ($paramType == self::COLLECTION || $paramType == self::ARRAY_OBJECT) {
+            foreach ($params as $p) {
+                $key_value = $p->update();
+                $fields = array_keys($key_value);
+                $values = array_map([$this, '_escape'], array_values($key_value));
                 foreach ($fields as $x => $f) {
                     if ($x > 0) {
                         $this->_sql .= ",";
                     }
                     $this->_sql .= "`{$f}`={$values[$x]}";
                 }
-            } else {
-                throw new MissingInterfaceAndMethods("Params is an object that doesn't implement DBInterface");
             }
         } else {
-            throw new MissingParams("No fields to update");
+            throw new MissingOrInvalidParam("No fields to update");
         }
 
         $where = $this->parseClause($arrWhere);
@@ -1047,14 +1090,14 @@ class Database
      *
      * @param string $strTableName
      *            The table to update
-     * @param array $arrParams
+     * @param mixed $arrParams
      *            Name/value pair to insert
      *
      * @return NULL|string
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function replace(string $strTableName, $arrParams)
+    public function replace(string $strTableName, $params)
     {
         $this->_sql = null;
         $this->setQueryType(self::REPLACE);
@@ -1063,22 +1106,23 @@ class Database
             $this->_sql = "REPLACE INTO $strTableName ";
         }
 
-        if (is_array($arrParams) && count($arrParams)) {
-            $keys = array_keys($arrParams);
-            $vals = array_values($arrParams);
+        $paramType = $this->checkParamType($params);
+
+        if ($paramType == self::ARRAY) {
+            $keys = array_keys($params);
+            $vals = array_values($params);
 
             $this->_sql .= "(`" . implode("`,`", $keys) . "`)";
             $this->_sql .= " VALUES (" . implode(",", array_map([
                 $this,
                 '_escape'
             ], array_values($vals))) . ")";
-        } elseif (is_object($arrParams)) {
-            $interfaces = class_implements($arrParams);
-            if (in_array("Godsgood33\Php_Db\DBInterface", $interfaces) && is_callable([$arrParams, 'replace'])) {
-                $params = $arrParams->replace();
-                $this->_sql .= "(`" . implode("`,`", array_keys($params)) . "`) VALUES ";
-                $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($params))) . ")";
-            }
+        } elseif ($paramType == self::OBJECT) {
+            $key_value = $params->replace();
+            $this->_sql .= "(`" . implode("`,`", array_keys($key_value)) . "`) VALUES ";
+            $this->_sql .= "(" . implode(",", array_map([$this, '_escape'], array_values($key_value))) . ")";
+        } else {
+            throw new MissingOrInvalidParam('Arrays or Objects that implement DBInterface are the only valid types for replace');
         }
 
         if (defined("PHP_DB_AUTORUN") && PHP_DB_AUTORUN) {
@@ -2128,5 +2172,81 @@ class Database
     public function error(): string
     {
         return $this->_c->error;
+    }
+
+    /**
+     * Method to check the parameter types
+     *
+     * @param mixed $param
+     *
+     * @return int
+     *
+     * @throws MissingInterfaceAndMethods
+     * @throws Exception
+     */
+    private function checkParamType($param): int
+    {
+        // check for implented object interfaces
+        $interfaces = is_object($param) ? class_implements($param) : [];
+
+        // numeric is the only datatype we can't have
+        if (is_numeric($param)) {
+            throw new MissingOrInvalidParam('Numeric parameters are not valid');
+        }
+
+        // check for a SELECT statement within an insert
+        if (is_string($param) && stripos($param, 'select') !== false) {
+            return self::STRING;
+        }
+        // param is an object, check to see if it includes the required interface
+        elseif (is_object($param) && !is_iterable($param)) {
+            if (!in_array('Godsgood33\Php_Db\DBInterface', $interfaces)) {
+                throw new MissingInterfaceAndMethods('Object does not implement DBInterface interface');
+            }
+
+            // check to see if all required methods are callable
+            if (!is_callable([$param, 'insert']) ||
+                !is_callable([$param, 'update']) ||
+                !is_callable([$param, 'replace']) ||
+                !is_callable([$param, 'where'])
+            ) {
+                throw new MissingInterfaceAndMethods("Required DBInterface methods are not present in class ".get_class($param));
+            }
+
+            return self::OBJECT;
+        }
+        // param is an array
+        elseif (is_array($param)) {
+            // check that there is actual data in the array
+            if (!count($param)) {
+                throw new Exception('Array param is empty');
+            }
+
+            // check the first element of the array and see if it's an object then recurse through to check it
+            $first = array_shift($param);
+            if (is_object($first) && $this->checkParamType($first) == self::OBJECT) {
+                return self::ARRAY_OBJECT;
+            }
+
+            return self::ARRAY;
+        }
+        // object is potentially a collection
+        elseif (is_object($param)) {
+            // check that collection has required interface
+            if (!in_array('IteratorAggregate', $interfaces)) {
+                throw new MissingInterfaceAndMethods('Object does not implement IteratorAggregate interface');
+            }
+
+            // get the first element in the collection
+            $it = $param->getIterator();
+            $first = $it->current();
+
+            // check that the first element of the collection is a valid object as defined above
+            if ($this->checkParamType($first) == self::OBJECT) {
+                return self::COLLECTION;
+            }
+        }
+
+        return 0;
     }
 }
