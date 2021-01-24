@@ -8,7 +8,7 @@ use Godsgood33\Php_Db\DBWhere;
 use Godsgood33\Php_Db\DBConst;
 use Godsgood33\Php_Db\Exceptions\ConnectError;
 use Godsgood33\Php_Db\Exceptions\MissingInterfaceAndMethods;
-use Godsgood33\Php_Db\Exceptions\MissingParams;
+use Godsgood33\Php_Db\Exceptions\MissingOrInvalidParam;
 use Godsgood33\Php_Db\Exceptions\QueryError;
 
 use PHPUnit\Framework\TestCase;
@@ -16,6 +16,8 @@ use PHPUnit\Framework\TestCase;
 require_once 'TestClass.php'; // class with _escape method
 require_once 'TestClass2.php'; // class without _escape method
 require_once 'TestClass3.php';
+require_once 'TestCollection.php';
+require_once 'TestIterator.php';
 require_once 'DBConfig.php';
 require_once 'DBTest.php'; // recommended method
 
@@ -726,7 +728,7 @@ final class DatabaseTest extends TestCase
 
     public function testEInsertDifferentFieldValuePairs()
     {
-        $this->expectException(MissingParams::class);
+        $this->expectException(MissingOrInvalidParam::class);
         $this->db->extendedInsert('test', [
             'id',
             'name'
@@ -742,7 +744,7 @@ final class DatabaseTest extends TestCase
 
     public function testEInsertDifferentFieldValuePairs2()
     {
-        $this->expectException(MissingParams::class);
+        $this->expectException(MissingOrInvalidParam::class);
         $this->db->extendedInsert('test', [
             'id',
             'name'
@@ -759,7 +761,7 @@ final class DatabaseTest extends TestCase
 
     public function testEInsertInvalidParamType()
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(MissingInterfaceAndMethods::class);
         $tc = new TestClass();
         $this->db->extendedInsert('test', ['id'], $tc);
     }
@@ -831,7 +833,7 @@ final class DatabaseTest extends TestCase
 
     public function testUpdateWithInvalidType()
     {
-        $this->expectException(MissingParams::class);
+        $this->expectException(MissingOrInvalidParam::class);
         $this->db->update("settings", 1);
     }
 
@@ -1210,5 +1212,19 @@ final class DatabaseTest extends TestCase
     {
         $this->db->select('test', ["IF(field1='tomato','1','0')"]);
         $this->assertEquals("SELECT IF(field1='tomato','1','0') FROM test", (string) $this->db);
+    }
+
+    public function testCollectionExtendedInsert()
+    {
+        $col = new TestCollection();
+        $col->addData(new TestClass3());
+        $col->addData(new TestClass3());
+
+        $this->db->extendedInsert('test', ['meta_key', 'meta_value'], $col);
+
+        $this->assertEquals(
+            "INSERT INTO test (`meta_key`,`meta_value`) VALUES ('test3','test3'),('test3','test3')",
+            (string) $this->db
+        );
     }
 }
