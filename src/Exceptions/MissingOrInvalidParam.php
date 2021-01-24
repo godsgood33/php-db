@@ -9,5 +9,6 @@ use Exception;
  *
  * @author Ryan Prather <godsgood33@gmail.com>
  */
-final class MissingParams extends Exception
-{}
+final class MissingOrInvalidParam extends Exception
+{
+}
