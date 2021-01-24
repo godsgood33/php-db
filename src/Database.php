@@ -994,18 +994,6 @@ class Database
                 }
                 $this->_sql .= "`{$f}`={$values[$x]}";
             }
-        } elseif ($paramType == self::COLLECTION || $paramType == self::ARRAY_OBJECT) {
-            foreach ($params as $p) {
-                $key_value = $p->update();
-                $fields = array_keys($key_value);
-                $values = array_map([$this, '_escape'], array_values($key_value));
-                foreach ($fields as $x => $f) {
-                    if ($x > 0) {
-                        $this->_sql .= ",";
-                    }
-                    $this->_sql .= "`{$f}`={$values[$x]}";
-                }
-            }
         } else {
             throw new MissingOrInvalidParam("No fields to update");
         }
@@ -1139,7 +1127,7 @@ class Database
      *            Table name to update
      * @param array $arrFields
      *            Array of fields
-     * @param array $arrParams
+     * @param mixed $arrParams
      *            Two-dimensional array of values
      *
      * @return NULL|string
@@ -1148,7 +1136,7 @@ class Database
      *
      * @uses PHP_DB_AUTORUN bool to decide if the statement should be auto-committed and the results returned instead of the statement
      */
-    public function extendedReplace(string $strTableName, array $arrFields, array $arrParams)
+    public function extendedReplace(string $strTableName, array $arrFields, $params)
     {
         $this->_sql = null;
         $this->setQueryType(self::EXTENDED_REPLACE);
@@ -1161,15 +1149,29 @@ class Database
             $this->_sql = "REPLACE INTO $strTableName " . "(`" . implode("`,`", $arrFields) . "`)";
         }
 
-        if (is_array($arrParams) && count($arrParams)) {
-            $this->_sql .= " VALUES ";
-            foreach ($arrParams as $p) {
+        $paramType = $this->checkParamType($params);
+        $this->_sql .= " VALUES ";
+
+        if ($paramType == self::ARRAY) {
+            foreach ($params as $p) {
                 $this->_sql .= "(" . implode(",", array_map([
                     $this,
                     '_escape'
                 ], array_values($p))) . ")";
 
-                if ($p != end($arrParams)) {
+                if ($p != end($params)) {
+                    $this->_sql .= ",";
+                }
+            }
+        } elseif ($paramType == self::COLLECTION || $paramType == self::ARRAY_OBJECT) {
+            foreach ($params as $p) {
+                $key_value = $p->replace();
+                $this->_sql .= "(" . implode(",", array_map([
+                    $this,
+                    '_escape'
+                ], array_values($key_value))) . ")";
+
+                if ($p != end($params)) {
                     $this->_sql .= ",";
                 }
             }
