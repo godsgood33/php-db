@@ -1164,6 +1164,12 @@ class Database
                 }
             }
         } elseif ($paramType == self::COLLECTION || $paramType == self::ARRAY_OBJECT) {
+            if ($paramType == self::COLLECTION) {
+                $last = $params->last();
+            } elseif ($paramType == self::ARRAY_OBJECT) {
+                $last = end($params);
+            }
+
             foreach ($params as $p) {
                 $key_value = $p->replace();
                 $this->_sql .= "(" . implode(",", array_map([
@@ -1171,7 +1177,7 @@ class Database
                     '_escape'
                 ], array_values($key_value))) . ")";
 
-                if ($p != end($params)) {
+                if ($p != $last) {
                     $this->_sql .= ",";
                 }
             }
