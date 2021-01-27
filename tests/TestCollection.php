@@ -69,4 +69,14 @@ final class TestCollection implements IteratorAggregate
 
         return $this;
     }
+
+    /**
+     * Method to return the last element in the collection
+     *
+     * @return TestClass3
+     */
+    public function last(): TestClass3
+    {
+        return end($this->data);
+    }
 }

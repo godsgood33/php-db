@@ -892,6 +892,17 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("REPLACE INTO test (`id`,`name`) VALUES ('1','Ed'),('2','Frank')", (string) $this->db);
     }
 
+    public function testEReplaceWithCollection()
+    {
+        $col = new TestCollection();
+        $col->addData(new TestClass3());
+        $col->addData(new TestClass3());
+
+        $this->db->extendedReplace('test', ['id', 'meta_key', 'meta_value'], $col);
+
+        $this->assertEquals("REPLACE INTO test (`id`,`meta_key`,`meta_value`) VALUES ('3','test3','test25')('3','test3','test25')", (string) $this->db);
+    }
+
     public function testFieldExists()
     {
         $id_exists = $this->db->fieldExists('test', 'id');
