@@ -86,21 +86,21 @@
 			]
 		}
 	],
-    "table_constraints" : [
-        {
-            "schema" : "db",
-            "table" : "test",
-            "constraints": [
-                {
-                    "id": "con_1",
-                    "local": "fk",
-                    "schema": "db",
-                    "table": "test",
-                    "field": "id",
-                    "update": "CASCADE",
-                    "delete": "CASCADE"
-                }
-            ]
-        }
-    ]
+	"table_constraints": [
+		{
+			"schema": "db",
+			"table": "test",
+			"constraints": [
+				{
+					"id": "con_1",
+					"local": "fk",
+					"schema": "db",
+					"table": "test",
+					"field": "id",
+					"update": "CASCADE",
+					"delete": "CASCADE"
+				}
+			]
+		}
+	]
 }
