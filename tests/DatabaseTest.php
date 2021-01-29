@@ -63,7 +63,7 @@ final class DatabaseTest extends TestCase
     {
         $sql = "select * from test3";
         $ret = $this->db->execute(MYSQLI_OBJECT, $sql);
-        $this->assertNull($ret);
+        $this->assertFalse($ret);
     }
 
     public function testExecuteWithInvalidTableSQL()
@@ -318,6 +318,12 @@ final class DatabaseTest extends TestCase
         $this->assertEquals("CREATE TEMPORARY TABLE IF NOT EXISTS test (`id` int(11) PRIMARY KEY,`name` varchar(100),`email` varchar(100) DEFAULT '')", (string) $this->db);
     }
 
+    public function testCreateTableWithInvalidTableName()
+    {
+        $this->expectException(MissingOrInvalidParam::class);
+        $this->db->createTable('george&*)_');
+    }
+
     public function testTableExists()
     {
         $tbl_count = $this->db->tableExists('db', 'settings');
@@ -327,7 +333,7 @@ final class DatabaseTest extends TestCase
     public function testMultipleTableExists()
     {
         $tbl_count = $this->db->tableExists('db', 'test%');
-        $this->assertEquals(3, $tbl_count);
+        $this->assertEquals(2, $tbl_count);
     }
 
     public function testTableNotPresent()
@@ -626,6 +632,12 @@ final class DatabaseTest extends TestCase
         $this->assertEquals(1, $result);
     }
 
+    public function testInsertWithInvalidStringType()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->db->insert('test', 'id');
+    }
+
     public function testEInsertWithExecute()
     {
         $this->db->extendedInsert('settings', ['meta_key', 'meta_value'], [
@@ -636,6 +648,18 @@ final class DatabaseTest extends TestCase
         $this->assertEquals(2, $rows);
     }
 
+    public function testEInsertWithPrimativeArray()
+    {
+        $this->db->extendedInsert('test2', ['id'], ['1','2','3','4','5'], true);
+        $this->assertEquals("INSERT IGNORE INTO test2 (`id`) VALUES ('1'),('2'),('3'),('4'),('5')", (string) $this->db);
+    }
+
+    public function testEInsertWithInvalidObjectParam()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->db->extendedInsert('test', ['id'], new TestClass3());
+    }
+
     public function testSelectCountWithExecute()
     {
         $this->db->selectCount('test');
@@ -643,9 +667,9 @@ final class DatabaseTest extends TestCase
         $this->assertEquals(1, $count);
     }
 
-    public function testInsertWithObject()
+    public function testInsertWithResource()
     {
-        $this->expectException(Exception::class);
+        $this->expectException(MissingOrInvalidParam::class);
         $fh = fopen(__DIR__ . '/test', 'r');
         $this->db->insert('settings', $fh);
     }
@@ -854,8 +878,14 @@ final class DatabaseTest extends TestCase
 
     public function testEUpdateWithStringList()
     {
-        $this->db->extendedUpdate("test", "settings", "id", ["name"]);
+        $this->db->extendedUpdate("test", "settings", "id", "name");
         $this->assertEquals("UPDATE test tbu INNER JOIN settings o USING (id) SET tbu.`name` = o.`name`", (string) $this->db);
+    }
+
+    public function testEUpdateWithInvalidParam()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->db->extendedUpdate('test', 'settings', 'id', new TestClass3());
     }
 
     public function testReplace()
@@ -901,6 +931,25 @@ final class DatabaseTest extends TestCase
         $this->db->extendedReplace('test', ['id', 'meta_key', 'meta_value'], $col);
 
         $this->assertEquals("REPLACE INTO test (`id`,`meta_key`,`meta_value`) VALUES ('3','test3','test25')('3','test3','test25')", (string) $this->db);
+    }
+
+    public function testEReplaceWithObjectArray()
+    {
+        $this->db->extendedReplace('test', ['id', 'meta_key', 'meta_value'], [new TestClass3(), new TestClass3()]);
+
+        $this->assertEquals("REPLACE INTO test (`id`,`meta_key`,`meta_value`) VALUES ('3','test3','test25')('3','test3','test25')", (string) $this->db);
+    }
+
+    public function testEReplaceWithArrayOfPrimatives()
+    {
+        $this->db->extendedReplace('test2', ['id'], ['1','2','3','4','5']);
+        $this->assertEquals("REPLACE INTO test2 (`id`) VALUES ('1'),('2'),('3'),('4'),('5')", (string) $this->db);
+    }
+
+    public function testReplaceWithInvalidStringParam()
+    {
+        $this->expectException(MissingOrInvalidParam::class);
+        $this->db->replace('test2', "test");
     }
 
     public function testFieldExists()
@@ -1086,6 +1135,12 @@ final class DatabaseTest extends TestCase
     {
         $sql = $this->db->drop("test", "view");
         $this->assertEquals("DROP VIEW IF EXISTS `test`", $sql);
+    }
+
+    public function testDropWithInvalidType()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->db->drop('test', 'frank');
     }
 
     public function testSetSchema()
