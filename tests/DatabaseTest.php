@@ -6,6 +6,7 @@ use Godsgood33\Php_Db\Database;
 use Godsgood33\Php_Db\DBCreateTable;
 use Godsgood33\Php_Db\DBWhere;
 use Godsgood33\Php_Db\DBConst;
+use Godsgood33\Php_Db\DBField;
 use Godsgood33\Php_Db\Exceptions\ConnectError;
 use Godsgood33\Php_Db\Exceptions\MissingInterfaceAndMethods;
 use Godsgood33\Php_Db\Exceptions\MissingOrInvalidParam;
@@ -167,16 +168,14 @@ final class DatabaseTest extends TestCase
     public function testSelectWithNullFieldParameter()
     {
         // query table with null fields parameter
-        $this->db->select("test", null);
+        $this->db->select("test", new DBField());
         $this->assertEquals("SELECT * FROM test", (string) $this->db);
     }
 
     public function testSelectWithOneArrayParameter()
     {
         // query table with one parameter
-        $this->db->select("test", [
-            'id'
-        ]);
+        $this->db->select("test", new DBField('id'));
         $this->assertEquals("SELECT `id` FROM test", (string) $this->db);
     }
 
@@ -184,8 +183,8 @@ final class DatabaseTest extends TestCase
     {
         // query table with 2 parameters
         $this->db->select("test", [
-            'id',
-            'name'
+            new DBField('id'),
+            new DBField('name')
         ]);
         $this->assertEquals("SELECT `id`,`name` FROM test", (string) $this->db);
     }
@@ -208,36 +207,66 @@ final class DatabaseTest extends TestCase
     public function testSelectWithNullWhereParameter()
     {
         // query table with null where parameter
-        $this->db->select("test", 'id', null);
-        $this->assertEquals("SELECT id FROM test", (string) $this->db);
+        $this->db->select("test", new DBField('id'), null);
+        $this->assertEquals("SELECT `id` FROM test", (string) $this->db);
     }
 
     public function testSelectWithEmptyArrayWhereParameter()
     {
         // query table with empty array where paramter
-        $this->db->select("test", 'id', []);
-        $this->assertEquals("SELECT id FROM test", (string) $this->db);
+        $this->db->select("test", new DBField('id'), []);
+        $this->assertEquals("SELECT `id` FROM test", (string) $this->db);
+    }
+
+    public function testSelectWithTableAlias()
+    {
+        $this->db->select('test t', new DBField('id', 't'));
+        $this->assertEquals("SELECT t.`id` FROM test t", (string) $this->db);
+    }
+
+    public function testSelectWithFieldAlias()
+    {
+        $this->db->select("test", new DBField('name', '', 'full_name'));
+        $this->assertEquals("SELECT `name` AS 'full_name' FROM test", (string) $this->db);
+    }
+
+    public function testSelectWithInvalidFieldName()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->db->select('test', new DBField('&^%'));
+    }
+
+    public function testSelectWithInvalidTableAlias()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->db->select('test', new DBField('id', '^%$'));
+    }
+
+    public function testSelectWithInvalidFieldAlias()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->db->select('test', new DBField('id', '', ')(*'));
     }
 
     public function testSelectWithImcompleteWhereArrayParameter()
     {
         $where = new DBWhere('id');
         // query with incomplete WHERE clause
-        $this->db->select("test", 'id', [$where]);
-        $this->assertEquals("SELECT id FROM test WHERE `id` = NULL", (string) $this->db);
+        $this->db->select("test", new DBField('id'), [$where]);
+        $this->assertEquals("SELECT `id` FROM test WHERE `id` = NULL", (string) $this->db);
     }
 
     public function testSelectWithMultipleWhereClauses()
     {
         $where1 = new DBWhere("name", "Frank");
         $where2 = new DBWhere("state", "IN");
-        $this->db->select("test", null, [$where1, $where2]);
+        $this->db->select("test", new DBField(), [$where1, $where2]);
         $this->assertEquals("SELECT * FROM test WHERE `name` = 'Frank' AND `state` = 'IN'", (string) $this->db);
     }
 
     public function testSelectWithGroupByFlag()
     {
-        $this->db->select('test', null, [], [
+        $this->db->select('test', new DBField(), [], [
             'group' => 'state'
         ]);
         $this->assertEquals("SELECT * FROM test GROUP BY state", (string) $this->db);
@@ -245,7 +274,7 @@ final class DatabaseTest extends TestCase
 
     public function testSelectWithGroupByArrayFlag()
     {
-        $this->db->select("test", null, [], [
+        $this->db->select("test", new DBField(), [], [
             'group' => ['lname', 'state']
         ]);
         $this->assertEquals("SELECT * FROM test GROUP BY lname, state", (string) $this->db);
@@ -254,14 +283,14 @@ final class DatabaseTest extends TestCase
     public function testSelectWithGroupByObject()
     {
         $this->expectException(Exception::class);
-        $this->db->select("test", null, [], [
+        $this->db->select("test", new DBField(), [], [
             'group' => new stdClass()
         ]);
     }
 
     public function testSelectWithOrderByFlag()
     {
-        $this->db->select("test", null, [], [
+        $this->db->select("test", new DBField(), [], [
             'order' => 'lname'
         ]);
         $this->assertEquals("SELECT * FROM test ORDER BY lname", (string) $this->db);
@@ -269,7 +298,7 @@ final class DatabaseTest extends TestCase
 
     public function testSelectWithOrderByArrayFlag()
     {
-        $this->db->select('test', null, [], [
+        $this->db->select('test', new DBField(), [], [
             'order' => [['field' => 'lname', 'sort' => 'ASC'], ['field' => 'state', 'sort' => 'DESC']]
         ]);
         $this->assertEquals("SELECT * FROM test ORDER BY lname ASC, state DESC", (string) $this->db);
@@ -280,7 +309,7 @@ final class DatabaseTest extends TestCase
         $where1 = new DBWhere('foo', 10);
         $where2 = new DBWhere('bar', 100, '>=');
         $where2->sqlOperator = 'OR';
-        $this->db->select('test', null, [], [
+        $this->db->select('test', new DBField(), [], [
             'having' => [$where1, $where2]
         ]);
         $this->assertEquals("SELECT * FROM test HAVING `foo` = 10 OR `bar` >= 100", (string) $this->db);
@@ -288,7 +317,7 @@ final class DatabaseTest extends TestCase
 
     public function testSelectWithLimitAndStartFlag()
     {
-        $this->db->select("test", null, [], [
+        $this->db->select("test", new DBField(), [], [
             'limit' => 10,
             'start' => 5
         ]);

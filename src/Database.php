@@ -1662,7 +1662,7 @@ class Database
     /**
      * Function to populate the fields for the SQL
      *
-     * @param array|string $fields
+     * @param mixed $fields
      *            [optional]
      *            Optional array of fields to string together to create a field list
      *
@@ -1683,10 +1683,17 @@ class Database
                 }
             }
             $ret = substr($ret, -1) == ',' ? substr($ret, 0, -1) : $ret;
+        } elseif (is_a($fields, 'Godsgood33\Php_Db\DBField')) {
+            $ret = (string) $fields;
+        } elseif (is_array($fields) && count($fields) && isset($fields[0]) && is_a($fields[0], 'Godsgood33\Php_Db\DBField')) {
+            foreach ($fields as $f) {
+                $ret .= (string) $f.",";
+            }
+            $ret = rtrim($ret, ',');
         } elseif (is_string($fields)) {
             $ret = $fields;
         } elseif (is_null($fields)) {
-            $ret = "*";
+            $ret = '*';
         } else {
             throw new InvalidArgumentException("Invalid field type");
         }
