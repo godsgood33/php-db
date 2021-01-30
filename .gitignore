@@ -1,5 +1,8 @@
 /build/
 /vendor/
-/coverage/
+/coverage*
 composer.lock
 /docs/_build/
+*.bak
+*.log
+composer.phar
