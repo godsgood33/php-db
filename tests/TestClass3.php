@@ -1,5 +1,6 @@
 <?php
 
+use Godsgood33\Php_Db\DBField;
 use Godsgood33\Php_Db\DBWhere;
 
 class TestClass3 implements Godsgood33\Php_Db\DBInterface
@@ -31,7 +32,7 @@ class TestClass3 implements Godsgood33\Php_Db\DBInterface
 
     public function where(): DBWhere
     {
-        $where = new Godsgood33\Php_Db\DBWhere('foo', 'bar');
+        $where = new Godsgood33\Php_Db\DBWhere(new DBField('foo'), 'bar');
         return $where;
     }
 }

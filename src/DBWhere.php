@@ -89,12 +89,15 @@ class DBWhere
     /**
      * Constructor
      *
-     * @param string $field
+     * @param DBField $field
      * @param mixed $value
      * @param string $operator
      */
-    public function __construct($field = null, $value = null, $operator = '=')
+    public function __construct(?DBField $field = null, $value = null, $operator = '=')
     {
+        if ($field == new DBField()) {
+            $field = null;
+        }
         $this->data = [
             'index' => 0,
             'field' => $field,
@@ -122,7 +125,7 @@ class DBWhere
      */
     public function __get($var)
     {
-        if(!in_array($var, [
+        if (!in_array($var, [
             'index', 'field', 'value', 'low', 'high', 'operator', 'backticks',
             'sqlOperator', 'escape', 'openParen', 'closeParen', 'caseInsensitive'
         ])) {
@@ -145,7 +148,7 @@ class DBWhere
      */
     public function __set($name, $value)
     {
-        if(!in_array($name, [
+        if (!in_array($name, [
             'index', 'field', 'value', 'low', 'high', 'operator', 'backticks',
             'sqlOperator', 'escape', 'openParen', 'closeParen', 'caseInsensitive'
         ])) {
@@ -188,11 +191,15 @@ class DBWhere
             $ret .= " (";
         }
 
+        $field = (string) $this->data['field'];
+
+        /*
         if (! $this->data['backticks']) {
             $field = $this->data['field'];
         } else {
             $field = "`{$this->data['field']}`";
         }
+        */
 
         if ($this->data['operator'] == self::IN || $this->data['operator'] == self::NOT_IN) {
             if (is_string($this->data['value'])) {

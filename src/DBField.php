@@ -27,6 +27,7 @@ class DBField
         'field' => '',
         'table' => '',
         'alias' => '',
+        'func' => ''
     ];
 
     /**
@@ -38,10 +39,12 @@ class DBField
      *      The parameter representing the table (can be an alias)
      * @param string $alias
      *      The parameter representing the alias the field should be known as (e.g. " `name` AS 'full_name'")
+     * @param string $function
+     *      The parameter saying the field should be passed to a SQL function (e.g. SUM, COUNT, etc)
      *
      * @throws InvalidArgumentException
      */
-    public function __construct(string $field = '*', string $table = '', string $alias = '')
+    public function __construct(string $field = '*', string $table = '', string $alias = '', string $function = '')
     {
         if (preg_match("/[^A-Za-z0-9_\*]/", $field)) {
             throw new InvalidArgumentException("Invalid field name $field");
@@ -54,6 +57,7 @@ class DBField
         $this->data['field'] = $field;
         $this->data['table'] = $table;
         $this->data['alias'] = $alias;
+        $this->data['func'] = $function;
     }
 
     /**
@@ -63,9 +67,26 @@ class DBField
      */
     public function __toString(): string
     {
-        $ret = ($this->data['table'] ? $this->data['table'].'.' : '').
-            ($this->data['field'] == '*' ? $this->data['field'] : "`{$this->data['field']}`").
-            ($this->data['alias'] ? " AS '{$this->data['alias']}'" : "");
+        $ret = '';
+        if ($this->data['func']) {
+            $ret .= $this->data['func'].'(';
+        }
+        if ($this->data['table']) {
+            $ret .= $this->data['table'].'.';
+        }
+        if ($this->data['field'] == '*') {
+            $ret .= $this->data['field'];
+        } elseif ($this->data['func']) {
+            $ret .= $this->data['field'];
+        } else {
+            $ret .= "`{$this->data['field']}`";
+        }
+        if ($this->data['func']) {
+            $ret .= ')';
+        }
+        if ($this->data['alias']) {
+            $ret .= " AS '{$this->data['alias']}'";
+        }
 
         return $ret;
     }

@@ -250,7 +250,7 @@ final class DatabaseTest extends TestCase
 
     public function testSelectWithImcompleteWhereArrayParameter()
     {
-        $where = new DBWhere('id');
+        $where = new DBWhere(new DBField('id'));
         // query with incomplete WHERE clause
         $this->db->select("test", new DBField('id'), [$where]);
         $this->assertEquals("SELECT `id` FROM test WHERE `id` = NULL", (string) $this->db);
@@ -258,8 +258,8 @@ final class DatabaseTest extends TestCase
 
     public function testSelectWithMultipleWhereClauses()
     {
-        $where1 = new DBWhere("name", "Frank");
-        $where2 = new DBWhere("state", "IN");
+        $where1 = new DBWhere(new DBField("name"), "Frank");
+        $where2 = new DBWhere(new DBField("state"), "IN");
         $this->db->select("test", new DBField(), [$where1, $where2]);
         $this->assertEquals("SELECT * FROM test WHERE `name` = 'Frank' AND `state` = 'IN'", (string) $this->db);
     }
@@ -306,8 +306,8 @@ final class DatabaseTest extends TestCase
 
     public function testSelectWithHavingFlag()
     {
-        $where1 = new DBWhere('foo', 10);
-        $where2 = new DBWhere('bar', 100, '>=');
+        $where1 = new DBWhere(new DBField('foo'), 10);
+        $where2 = new DBWhere(new DBField('bar'), 100, '>=');
         $where2->sqlOperator = 'OR';
         $this->db->select('test', new DBField(), [], [
             'having' => [$where1, $where2]
@@ -591,7 +591,7 @@ final class DatabaseTest extends TestCase
 
     public function testSelectCountWithArrayWhereParameter()
     {
-        $where = new DBWhere('name', 'Ed');
+        $where = new DBWhere(new DBField('name'), 'Ed');
         $this->db->selectCount("test", [$where], [
             'joins' => [
                 "JOIN settings s ON s.id = test.id"
@@ -602,8 +602,8 @@ final class DatabaseTest extends TestCase
 
     public function testSelectCountWithMultipleWhereClauses()
     {
-        $where1 = new DBWhere('name', '%george%', DBWhere::LIKE);
-        $where2 = new DBWhere('state', 'IN');
+        $where1 = new DBWhere(new DBField('name'), '%george%', DBWhere::LIKE);
+        $where2 = new DBWhere(new DBField('state'), 'IN');
 
         $this->db->selectCount('test', [$where1, $where2]);
         $this->assertEquals("SELECT COUNT(1) AS 'count' FROM test WHERE `name` LIKE '%george%' AND `state` = 'IN'", (string) $this->db);
@@ -732,7 +732,7 @@ final class DatabaseTest extends TestCase
 
     public function testSelectRetrieveSingleRowObject()
     {
-        $where = new DBWhere('id', 1);
+        $where = new DBWhere(new DBField('id'), 1);
         $this->db->select('settings', null, [$where]);
         $row = $this->db->execute();
 
@@ -837,7 +837,7 @@ final class DatabaseTest extends TestCase
 
     public function testUpdateWithOneElementAndWhereArray()
     {
-        $where = new DBWhere('id', 1);
+        $where = new DBWhere(new DBField('id'), 1);
         $this->db->update('test', [
             'name' => 'Frank'
         ], [$where]);
@@ -846,15 +846,15 @@ final class DatabaseTest extends TestCase
 
     public function testUpdateWithMultipleWhereObjects()
     {
-        $where1 = new DBWhere('fname', 'Fred');
-        $where2 = new DBWhere('lname', 'Flintstone');
+        $where1 = new DBWhere(new DBField('fname'), 'Fred');
+        $where2 = new DBWhere(new DBField('lname'), 'Flintstone');
         $this->db->update('test', ['phone' => 1], [$where1, $where2]);
         $this->assertEquals("UPDATE test SET `phone`='1' WHERE `fname` = 'Fred' AND `lname` = 'Flintstone'", (string) $this->db);
     }
 
     public function testUpdateWithNullValue()
     {
-        $this->db->update('test', ['phone' => null, 'email' => null], new DBWhere('id', 1));
+        $this->db->update('test', ['phone' => null, 'email' => null], new DBWhere(new DBField('id'), 1));
         $this->assertEquals("UPDATE test SET `phone`=NULL,`email`=NULL WHERE `id` = '1'", (string) $this->db);
     }
 
@@ -1111,7 +1111,7 @@ final class DatabaseTest extends TestCase
 
     public function testDeleteWithWhereClause()
     {
-        $where = new DBWhere('id', 1);
+        $where = new DBWhere(new DBField('id'), 1);
         $this->db->delete('test', [
             'id'
         ], [$where]);
@@ -1120,8 +1120,8 @@ final class DatabaseTest extends TestCase
 
     public function testDeleteWithMultipleWhereClauses()
     {
-        $where1 = new DBWhere('name', '%george%', DBWhere::LIKE);
-        $where2 = new DBWhere('state', 'IN');
+        $where1 = new DBWhere(new DBField('name'), '%george%', DBWhere::LIKE);
+        $where2 = new DBWhere(new DBField('state'), 'IN');
 
         $this->db->delete('test', null, [$where1, $where2]);
         $this->assertEquals("DELETE FROM test WHERE `name` LIKE '%george%' AND `state` = 'IN'", (string) $this->db);
@@ -1191,7 +1191,7 @@ final class DatabaseTest extends TestCase
     {
         //$this->expectException(TypeError::class);
         $dt = new DateTime('2019-01-01 00:00:00');
-        $where = new DBWhere('date', $dt, ">=");
+        $where = new DBWhere(new DBField('date'), $dt, ">=");
         $this->db->select("test", null, $where);
         $this->assertEquals("SELECT * FROM test WHERE `date` >= '2019-01-01 00:00:00'", (string) $this->db);
     }
@@ -1200,7 +1200,7 @@ final class DatabaseTest extends TestCase
     {
         //$this->expectException(TypeError::class);
         $bool = true;
-        $where = new DBWhere('active', $bool);
+        $where = new DBWhere(new DBField('active'), $bool);
         $this->db->select('test', null, $where);
         $this->assertEquals("SELECT * FROM test WHERE `active` = '1'", (string) $this->db);
     }
@@ -1209,7 +1209,7 @@ final class DatabaseTest extends TestCase
     {
         //$this->expectException(TypeError::class);
         $arr = ['Fred', 'Barney'];
-        $where = new DBWhere('name', $arr, DBWhere::IN);
+        $where = new DBWhere(new DBField('name'), $arr, DBWhere::IN);
         $this->db->select('test', null, $where);
         $this->assertEquals("SELECT * FROM test WHERE `name` IN ('Fred','Barney')", (string) $this->db);
     }
@@ -1219,7 +1219,7 @@ final class DatabaseTest extends TestCase
         //$this->expectException(TypeError::class);
         $ob = new \TestClass();
         $ob->var = "This is Frank's";
-        $where = new DBWhere('comment', $ob);
+        $where = new DBWhere(new DBField('comment'), $ob);
         $this->db->select('test', null, $where);
         $this->assertEquals("SELECT * FROM test WHERE `comment` = This is Frank\'s", (string) $this->db);
     }
@@ -1228,7 +1228,7 @@ final class DatabaseTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         $ob = new \TestClass2();
-        $where = new DBWhere('test', $ob);
+        $where = new DBWhere(new DBField('test'), $ob);
         $this->db->select('test', null, $where);
     }
 
@@ -1236,7 +1236,7 @@ final class DatabaseTest extends TestCase
     {
         $this->expectException(Exception::class);
         $ob = new \TestClass4();
-        $where = new DBWhere('test', $ob);
+        $where = new DBWhere(new DBField('test'), $ob);
         $this->db->select('test', null, $where);
     }
 
@@ -1321,5 +1321,13 @@ final class DatabaseTest extends TestCase
             "INSERT INTO test (`meta_key`,`meta_value`) VALUES ('test3','test3'),('test3','test3')",
             (string) $this->db
         );
+    }
+
+    public function testDBFieldFunction()
+    {
+        $field = new DBField('1', '', 'field_count', 'COUNT');
+        $this->db->select('test', $field);
+
+        $this->assertEquals("SELECT COUNT(1) AS 'field_count' FROM test", (string) $this->db);
     }
 }
